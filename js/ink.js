@@ -31,9 +31,10 @@ export function lerpK(a, b, t, o = {}) {
   return { T: a.T.clone().lerp(b.T, tt), az: a.az + daz * te, el: L(a.el, b.el, te), h: Math.exp(L(Math.log(a.h), Math.log(b.h), th)), fov: Math.exp(L(Math.log(a.fov), Math.log(b.fov), tf)) };
 }
 
-const ND_VS = 'varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
-const ND_VS_INST = 'varying vec3 vN; void main(){ vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.); }';
-const ND_FS = 'uniform float uClass; varying vec3 vN; void main(){ vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n; gl_FragColor = vec4(n.xy * .5 + .5, uClass / 8., 1.); }';
+// normal + classe; uClipY corta o modelo na altura da planta (1,3 m) e as faces de trás que aparecem no corte viram poché
+const ND_VS = 'varying vec3 vN; varying float vY; void main(){ vN = normalize(normalMatrix * normal); vY = (modelMatrix * vec4(position, 1.)).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
+const ND_VS_INST = 'varying vec3 vN; varying float vY; void main(){ vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); vY = (modelMatrix * instanceMatrix * vec4(position, 1.)).y; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.); }';
+const ND_FS = 'uniform float uClass, uClipY, uPoche, uPocheOk; varying vec3 vN; varying float vY; void main(){ if (vY > uClipY) discard; vec3 n = normalize(vN); float c = uClass; if (!gl_FrontFacing) { n = -n; if (uPoche * uPocheOk > .5) c = 7.; } gl_FragColor = vec4(n.xy * .5 + .5, c / 8., 1.); }';
 
 const DISPLAY_FS = `
   uniform sampler2D tND, tDepth, tReal;
@@ -91,12 +92,13 @@ const DISPLAY_FS = `
     if (!bg) {
       float sh = .9 + .1 * dot(nc, normalize(vec3(-.35, .55, .75)));
       base *= sh;
-      if (cls == 1.) { if (h21(floor(p / 2.)) < .09) e = max(e, .45); base *= vec3(.95, .98, .92); }
+      if (cls == 1.) { if (h21(floor(p / 2.)) < .045) e = max(e, .4); base *= vec3(.95, .98, .92); }
       else if (cls == 2.) { base = mix(base, vec3(.78, .89, .9), .8); if (fract(p.y / 5. + vn(p * .05) * 1.4) < .16) e = max(e, .3); }
       else if (cls == 3.) { float hh = fract((p.x * .35 - p.y) / 4.); if (hh < .22) e = max(e, .38); base *= .96; }
       else if (cls == 4.) { base = mix(base, vec3(.88, .93, .94), .5); }
       else if (cls == 5.) { if (h21(floor(p)) < .012) e = max(e, .28); }
       else if (cls == 6.) { base *= .86; if (h21(floor(p / 2.)) < .12) e = max(e, .4); }
+      else if (cls == 7.) { base = mix(base, uInk, .82); }
     }
     vec3 col = mix(base, uInk, clamp(e, 0., .92));
     // revelação da prancha: o desenho sobe do chão, com tinta fresca na frente
@@ -138,10 +140,10 @@ export function makeInk(renderer, scene, cam, opt) {
   const qCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
   // material de normal+classe por grupo
-  const ndCache = new Map();
-  const ndMat = (cls, inst) => {
-    const key = cls + (inst ? 'i' : '');
-    if (!ndCache.has(key)) ndCache.set(key, new THREE.ShaderMaterial({ uniforms: { uClass: { value: cls } }, vertexShader: inst ? ND_VS_INST : ND_VS, fragmentShader: ND_FS, side: THREE.DoubleSide }));
+  const ndCache = new Map(), CLIP = { value: 1e4 }, POCHE = { value: 0 };
+  const ndMat = (cls, inst, pok) => {
+    const key = cls + (inst ? 'i' : '') + (pok ? 'p' : '');
+    if (!ndCache.has(key)) ndCache.set(key, new THREE.ShaderMaterial({ uniforms: { uClass: { value: cls }, uClipY: CLIP, uPoche: POCHE, uPocheOk: { value: pok ? 1 : 0 } }, vertexShader: inst ? ND_VS_INST : ND_VS, fragmentShader: ND_FS, side: THREE.DoubleSide }));
     return ndCache.get(key);
   };
   const inkList = [], noInk = [];
@@ -150,7 +152,7 @@ export function makeInk(renderer, scene, cam, opt) {
     const d = o.userData;
     if (d.noink) noInk.push(o);
     if (d.stage === undefined || d.blades || d.noink) return;
-    inkList.push({ o, nd: ndMat(d.ink || 0, o.isInstancedMesh), main: o.material });
+    inkList.push({ o, nd: ndMat(d.ink || 0, o.isInstancedMesh, ['plaster', 'wood', 'cement', 'stone'].includes(d.kind)), main: o.material });
   });
   P.setSize = (W, H, dpr) => {
     P.W = W; P.H = H; P.dpr = dpr;
@@ -176,6 +178,7 @@ export function makeInk(renderer, scene, cam, opt) {
       dev(t.rect, R[i]);
       P.mat.uniforms.uReveal.value[i] = t.reveal ?? 1;
       aim(cam, t.cam, t.rect, P.W, P.H);
+      CLIP.value = t.clipY ?? 1e4; POCHE.value = t.clipY !== undefined && t.clipY < 50 ? 1 : 0;
       inkList.forEach((e) => { const s = e.o.userData.stage; e.o.visible = s <= t.stage && !(s === 1 && t.stage > 1); });
       const x0 = Math.max(0, Math.floor(R[i].x)), y0 = Math.max(0, Math.floor(R[i].y)), x1 = Math.min(P.ndRT.width, Math.ceil(R[i].z)), y1 = Math.min(P.ndRT.height, Math.ceil(R[i].w));
       P.ndRT.scissor.set(x0, y0, x1 - x0, y1 - y0); P.ndRT.scissorTest = true;

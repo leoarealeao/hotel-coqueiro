@@ -22,7 +22,7 @@ Leonardo responde em português, quer respostas curtas e objetivas, é visual, e
 - Bloco A (lado do mar, z 1,2–8,7): apartamentos de 2 quartos (~50 m²). Térreo 1–4, superior 8–11.
 - Bloco B (lado de terra, z 17,3–21,8): apartamentos de 1 quarto (~35 m²). Térreo: recepção aberta, 5, 6, 7. Superior 12–15.
 - Total: 15 apartamentos + recepção. Módulos em x = 21, 29,25, 36, 44,25 (largura 6,75 m), escadas entre módulos.
-- Pátio central gramado (z 10,2–15,8) com piscina orgânica única (~15,5 × até 3 m), espreguiçadeiras no fundo, pufes redondos de palha e mesinhas na frente. Ducha no muro do fundo.
+- Pátio central gramado (z 10,2–15,8) com piscina RETA de 15 × 2 m (x 29,25–44,25, z 12–14; decisão do Leonardo, substitui a orgânica do GLB para sobrar circulação), espreguiçadeiras no fundo, pufes redondos de palha e mesinhas na frente. Ducha no muro do fundo.
 - Varandas de 1,5 m voltadas para a piscina, com redes de tecido cru. Térreo entra pela varanda; superior entra pelo patamar da escada.
 - Recepção: térreo aberto sob o apto 12, pilares roliços de madeira com base de pedra, piso cimento queimado, tapete de palha, sofá de madeira com almofadas de linho, poltronas de rattan, mesa de centro redonda, balcão ripado, pendentes de palha, salinha de apoio.
 

@@ -93,9 +93,13 @@ const lamps = [[41.0, 5.3, 6.0, 1.0], [37.7, 5.3, 6.8, 0.8], [24.4, 2.4, 18.8, 1
 });
 
 // ---------------------------------------------------------------- roteiro
-const K0 = { T: V(27, 3.4, 11.5), az: -142, el: 30, h: PHONE ? 26 : 17.5, fov: 2 };     // as pranchas: o hotel inteiro
-const K1 = { T: V(26.5, 0.5, 11.5), az: -142, el: 30, h: PHONE ? 30 : 15.5, fov: 2 }; // dentro da prancha 01
-const Z = { zoom: [0.35, 1.35], close: [1.15, 1.9], pour: [1.75, 2.55], lens: [2.35, 3.2], build: [3.2, 10.0], walk: 10.0, end: [20.7, 21.6], total: 21.8 };
+// a planta: o GLB visto de cima por lente de 2°, cortado a 1,30 m; o mar fica em cima
+const KP = (r) => (r.w >= r.h
+  ? { T: V(26.5, 0, 11.5), az: 90, el: 89.6, h: Math.max(23 * 0.58, 53 * 0.55 / (r.w / r.h)), fov: 2 }
+  : { T: V(26.5, 0, 11.0), az: 180, el: 89.6, h: Math.max(53 * 0.54, 23 * 0.6 / (r.w / r.h)), fov: 2 }); // celular: a planta em pé, mar à esquerda
+const K1 = { T: V(26.5, 0.5, 11.5), az: -142, el: 30, h: PHONE ? 30 : 15.5, fov: 2 }; // axonométrica do lote, tela cheia
+const Z = { tilt: [0.3, 1.3], rewind: [1.3, 1.85], pour: [1.85, 2.55], lens: [2.35, 3.2], build: [3.2, 10.0], walk: 10.0, end: [20.7, 21.6], total: 21.8 };
+const INK_STAGE = ['', 'Terreno vazio', 'Fundações', 'Estrutura', 'Paredes', 'Telhados de palha', 'Paisagismo e piscina', 'Paisagismo e piscina'];
 const KEYS = [
   // a obra: do alto, depois no meio do pátio enquanto as paredes sobem, depois os telhados
   [3.2, -1, 9, 5, 27, 2, 13.5, 50],
@@ -152,10 +156,22 @@ const HIDE = [sky, world.bg, world.blades];
 
 // ---------------------------------------------------------------- a prancha
 const sheet = $('#sheet');
-const tiles = [...document.querySelectorAll('.tile')], frames = [...document.querySelectorAll('.frame')];
-let REST = [];
-const measure = () => { sheet.style.transform = 'none'; REST = frames.map((f) => { const r = f.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }); };
+const pframe = $('#pframe');
+let REST = null;
+const measure = () => { const r = pframe.getBoundingClientRect(); REST = { x: r.left, y: r.top, w: r.width, h: r.height }; };
 measure();
+// rótulos da planta (numeração de referencia/plantas/planta_numerada.png)
+const LABELS = [
+  ...[[24.375, 1, 8], [32.625, 2, 9], [39.375, 3, 10], [47.625, 4, 11]].map(([x, a, b]) => [x, 4.95, `<b>${a}<small>+${b}</small></b><span>2 quartos · ~50 m²</span>`, '']),
+  [24.375, 19.55, '<b>Recepção</b><span>aberta · em cima o 12</span>', 's'],
+  ...[[32.625, 5, 13], [39.375, 6, 14], [47.625, 7, 15]].map(([x, a, b]) => [x, 19.55, `<b>${a}<small>+${b}</small></b><span>1 quarto · ~35 m²</span>`, '']),
+  [36.75, 13, '<b>Piscina</b><span>15 × 2 m</span>', 's'],
+  [8, 7.5, '<b>Estacionamento</b><span>6 vagas</span>', 's'],
+  [26.5, -2.2, PHONE ? '<b>&larr; mar</b>' : '<b>&uarr; mar a ~200 m</b>', 's'],
+];
+const plabels = $('#plabels');
+plabels.innerHTML = LABELS.map(([, , h, c]) => `<div class="lb ${c}">${h}</div>`).join('');
+const lbEls = [...plabels.children], _v = new THREE.Vector3();
 
 // cronograma
 const ROWS = [['Fundações', 2], ['Estrutura', 3], ['Paredes', 4], ['Telhados de palha', 5], ['Paisagismo e piscina', 6], ['Inauguração', 7]];
@@ -168,7 +184,7 @@ const CAPS = [
   [10.0, 10.9, 'Estacionamento', '6 vagas · areia compactada'],
   [10.9, 12.25, 'Recepção', 'aberta, sob o apto 12'],
   [12.25, 13.2, 'Pátio', 'gramado entre coqueiros'],
-  [13.2, 14.2, 'Piscina', 'orgânica · ~15,5 m'],
+  [13.2, 14.2, 'Piscina', 'reta · 15 × 2 m'],
   [14.2, 15.0, 'Bloco A', 'apartamentos de 2 quartos'],
   [15.0, 16.1, 'Escada', 'entrada dos aptos de cima'],
   [16.1, 17.75, 'Apto 10', 'varanda para a piscina'],
@@ -204,7 +220,7 @@ buildAt(world, 0); lightFor(0);
 aim(cam, KA, { x: 0, y: 0, w: W, h: H }, W, H);
 renderer.compile(scene, cam);
 for (const m of [0, 14]) { buildAt(world, m); lightFor(m); renderer.shadowMap.needsUpdate = true; aim(cam, KA, { x: 0, y: 0, w: W, h: H }, W, H); ink.real(); }
-ink.draw(REST.map((r, i) => ({ rect: r, cam: K0, stage: i + 1 })), HIDE);
+ink.draw([{ rect: REST, cam: KP(REST), stage: 7, clipY: 1.3 }], HIDE);
 prog(1);
 await document.fonts.ready;
 $('#loader').classList.add('out');
@@ -216,7 +232,7 @@ track.style.height = (Z.total + 1) * 100 + 'vh';
 if (Q.has('v')) { history.scrollRestoration = 'manual'; scrollTo(0, +Q.get('v') * innerHeight); }
 let sv = scrollY / innerHeight, last = performance.now(), lastKey = '';
 const heroT0 = performance.now() + 250;
-const reveal = (i, now) => (STILL ? 1 : clamp((now - heroT0 - i * 330) / 1100, 0, 1));
+const reveal = (i, now) => (STILL ? 1 : clamp((now - heroT0) / 1800, 0, 1));
 
 function render(now, forceV) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -225,37 +241,32 @@ function render(now, forceV) {
   if (Math.abs(target - sv) < 1e-4) sv = target;
   T.time.value = OFFLINE ? sv * 4 : now / 1000;
 
-  const z = ease(sm(Z.zoom[0], Z.zoom[1], sv)), c = sm(Z.close[0], Z.close[1], sv);
+  const c = sm(Z.tilt[0], Z.tilt[1], sv), rw = sm(Z.rewind[0], Z.rewind[1], sv);
   const pour = sm(Z.pour[0], Z.pour[1], sv), l = sm(Z.lens[0], Z.lens[1], sv);
   const realOnly = sv >= Z.pour[1];
   const month = monthAt(sv);
   let k;
-  if (sv < Z.lens[0]) k = c > 0 ? lerpK(K0, K1, c) : K0;
+  const kp = KP(REST);
+  if (sv < Z.lens[0]) k = c > 0 ? lerpK(kp, K1, ease(c), { e: ease(sm(0.05, 0.9, c)) }) : kp;
   else if (sv < Z.build[0]) k = lerpK(K1, KA, l, { f: sm(0, 0.7, l), e: sm(0.15, 1, l), T: sm(0.1, 1, l), h: sm(0.1, 1, l) });
   else { const w = pathAt(sv); k = toK(w.P, w.L, w.fov); }
   buildAt(world, month); lightFor(month);
 
-  // a prancha mergulha na 01
-  const R0 = REST[0], sC = Math.max(W / R0.w, H / R0.h);
-  const cL = { x: R0.x + R0.w / 2, y: R0.y + R0.h / 2 }, c1 = { x: W / 2, y: H / 2 };
-  const F = { x: (c1.x - cL.x * sC) / (1 - sC), y: (c1.y - cL.y * sC) / (1 - sC) };
-  const s = Math.exp(Math.log(sC) * z);
-  const zr = (r) => ({ x: F.x + (r.x - F.x) * s, y: F.y + (r.y - F.y) * s, w: r.w * s, h: r.h * s });
-  sheet.style.transform = z > 0 ? `translate(${F.x * (1 - s)}px, ${F.y * (1 - s)}px) scale(${s})` : 'none';
-  sheet.style.opacity = 1 - sm(0.45, 0.9, z);
-  sheet.style.visibility = z > 0.95 ? 'hidden' : 'visible';
-  const rects = REST.map(zr);
-  const cover = rects[0];
-  const rectL = c > 0 ? { x: lerp(cover.x, 0, c), y: lerp(cover.y, 0, c), w: lerp(cover.w, W, c), h: lerp(cover.h, H, c) } : cover;
-  rects[0] = rectL;
-  tiles.forEach((t, i) => t.classList.toggle('on', reveal(i, now) > 0));
+  // a planta cresce até a tela cheia enquanto inclina para a axonométrica
+  sheet.style.opacity = 1 - sm(Z.tilt[0], Z.tilt[0] + 0.5, sv);
+  sheet.style.visibility = sv > Z.tilt[0] + 0.55 ? 'hidden' : 'visible';
+  const ce = ease(c);
+  const rectL = { x: lerp(REST.x, 0, ce), y: lerp(REST.y, 0, ce), w: lerp(REST.w, W, ce), h: lerp(REST.h, H, ce) };
+  const clipY = lerp(1.3, 80, sm(0.08, 0.6, c));
+  const inkStage = Math.max(1, 7 - Math.floor(rw * 6.999));
 
   // textos
-  const diving = z > 0.02;
-  hint.classList.toggle('on', !diving && reveal(5, now) >= 1);
+  const diving = sv > Z.tilt[0];
+  hint.classList.toggle('on', !diving && reveal(0, now) >= 1);
   let chipTxt = '';
   if (sv > Z.build[0] - 0.4 && sv < Z.walk - 0.15) chipTxt = `Mês ${pad(Math.floor(month))} &nbsp;·&nbsp; <i>${stageName(month)}</i>`;
-  else if (diving && sv < Z.build[0] - 0.4) chipTxt = 'Prancha 01 &nbsp;·&nbsp; <i>Terreno vazio</i>';
+  else if (sv > Z.rewind[0] && sv < Z.build[0] - 0.4) chipTxt = `Etapa ${pad(Math.min(6, inkStage))} &nbsp;·&nbsp; <i>${INK_STAGE[inkStage]}</i>`;
+  else if (sv > Z.tilt[0] + 0.3 && sv <= Z.rewind[0]) chipTxt = 'O hotel pronto &nbsp;·&nbsp; <i>agora, do zero</i>';
   if (chip.dataset.t !== chipTxt) { chip.innerHTML = chipTxt; chip.dataset.t = chipTxt; }
   chip.classList.toggle('on', !!chipTxt);
   cal.style.opacity = sm(Z.build[0] - 0.3, Z.build[0], sv) * (1 - sm(Z.walk - 0.2, Z.walk + 0.1, sv));
@@ -274,17 +285,19 @@ function render(now, forceV) {
   endEl.style.opacity = sm(Z.end[0], Z.end[0] + 0.4, sv);
 
   // desenho e terreno
-  const revs = tiles.map((_, i) => reveal(i, now));
-  const key = [W, H, sv.toFixed(4), revs.map((r) => r.toFixed(3)).join(':')].join(',');
+  const rev = reveal(0, now);
+  const key = [W, H, sv.toFixed(4), rev.toFixed(3)].join(',');
   if (key === lastKey) return;
   lastKey = key;
   const D = k.h / Math.tan(k.fov * Math.PI / 360);
   scene.fog.near = D + (k.fov < 10 ? 80 : 60); scene.fog.far = D + (k.fov < 10 ? 1200 : 900);
   if (!realOnly) {
-    const all = c < 0.02;
-    ink.draw(REST.map((_, i) => ({ rect: rects[i], cam: i === 0 ? k : K0, stage: i + 1, hidden: i > 0 && !all, reveal: revs[i] })), HIDE);
+    ink.draw([{ rect: rectL, cam: k, stage: inkStage, clipY, reveal: rev }], HIDE);
   }
   aim(cam, k, rectL, W, H);
+  const lo = (1 - sm(Z.tilt[0], Z.tilt[0] + 0.3, sv)) * sm(0.6, 1, rev);
+  plabels.style.opacity = lo;
+  if (lo > 0) LABELS.forEach(([x, z], i) => { _v.set(x, 0.5, z).project(cam); lbEls[i].style.left = (_v.x + 1) / 2 * W + 'px'; lbEls[i].style.top = (1 - _v.y) / 2 * H + 'px'; });
   sky.position.copy(cam.position);
   if (pour > 0) ink.real();
   ink.show({ rect0: rectL, pour, realOnly, inkOver: 1 - sm(Z.pour[1] - 0.25, Z.pour[1], sv) });

@@ -177,8 +177,7 @@ function classify(k, bb, hex) {
   if (k === 60) return y0 > 3 ? null : C(6, 'leaf', 'y', 6);
   if (k === 57 || k === 65) return C(6, 'leaf', 'y', 6);
   if (k === 63) return C(6, 'glow');
-  if (k === 66) return C(6, 'stone', 'x');
-  if (k === 67) return C(6, 'water', 'x', 2);
+  if (k === 66 || k === 67) return null; // piscina orgânica do GLB substituída pela reta (decisão do Leonardo)
   if (k === 69) return null;
   if ([45, 46, 47, 56, 61].includes(k)) return C(6, 'fabric');
   return C(6, 'flat');
@@ -310,6 +309,26 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   // o chão de fora usa a variação de restinga
   groups.filter((g) => g.userData.k === 70).forEach((g) => { g.material = M.make('sand', '#cdbf9f', g.userData.U); g.material.userData.out = 1; setOut(g.material); });
 
+  // piscina reta, 15 × 2 m, entre as duas escadas (x 29,25–44,25), no eixo do pátio (z 12–14)
+  {
+    const P = { x0: 29.25, x1: 44.25, z0: 12.0, z1: 14.0 };
+    const add = (geo, kind, hex, ink, mode) => {
+      geo.computeBoundingBox(); const bb = geo.boundingBox;
+      const U = { uCut: { value: 1e4 }, uAxis: { value: V(1, 0, 0) }, uBand: { value: 0 } };
+      const m = new THREE.Mesh(geo, M.make(kind, hex, U)); m.receiveShadow = true;
+      if (kind === 'stone') { m.castShadow = true; m.customDepthMaterial = depthPatch(U); }
+      m.userData = { stage: 6, ink, U, lo: bb.min.x - 0.05, hi: bb.max.x + 0.05, mode, hotel: true, kind };
+      root.add(m); groups.push(m);
+    };
+    const water = new THREE.PlaneGeometry(P.x1 - P.x0, P.z1 - P.z0).rotateX(-Math.PI / 2).translate((P.x0 + P.x1) / 2, 0.06, (P.z0 + P.z1) / 2);
+    add(water, 'water', '#2cb6bf', 2, 'x');
+    const b = 0.3, hgt = 0.1, cx = (P.x0 + P.x1) / 2, L = P.x1 - P.x0 + 2 * b, Wd = P.z1 - P.z0;
+    const parts = [
+      new THREE.BoxGeometry(L, hgt, b).translate(cx, hgt / 2, P.z0 - b / 2), new THREE.BoxGeometry(L, hgt, b).translate(cx, hgt / 2, P.z1 + b / 2),
+      new THREE.BoxGeometry(b, hgt, Wd).translate(P.x0 - b / 2, hgt / 2, (P.z0 + P.z1) / 2), new THREE.BoxGeometry(b, hgt, Wd).translate(P.x1 + b / 2, hgt / 2, (P.z0 + P.z1) / 2),
+    ];
+    add(mergeGeometries(parts.map((g) => g.toNonIndexed())), 'stone', '#e6dcc6', 0, 'x');
+  }
   // gabarito da obra (só na etapa 1): linha de estacas no perímetro do lote
   {
     const pts = [[0, 0], [53, 0], [53, 23], [2, 23], [2, 15.6], [0, 15.6], [0, 0]];
@@ -437,7 +456,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     let n = 0;
     while (n < NB) {
       const x = 21.1 + r() * 29.8, z = 10.25 + r() * 5.5;
-      const px = (x - 36.75) / 8.3, pz = (z - 13) / 1.95; if (px * px * px * px + pz * pz < 1.15) continue; // piscina
+      if (x > 28.9 && x < 44.6 && z > 11.65 && z < 14.35) continue; // piscina
       if (x < 27.5 && z < 12.6 && x > 21.5 && z > 11) continue;
       e.set((r() - 0.5) * 0.5, r() * 6.28, (r() - 0.5) * 0.5); q.setFromEuler(e);
       const h = 0.05 + r() * 0.07;

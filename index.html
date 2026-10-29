@@ -29,14 +29,17 @@
   h1 i { font-weight: 500; color: var(--accent); }
   .sub { font: 500 10.5px/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0 2px; color: rgba(28, 27, 24, .75); }
   .top .meta { font: 500 10px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-align: right; color: rgba(28, 27, 24, .7); }
-  .grid { position: absolute; left: var(--gx); right: var(--gx); top: 122px; bottom: 112px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); column-gap: 18px; row-gap: 22px; }
-  figure.tile { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+  .planta { position: absolute; left: var(--gx); right: var(--gx); top: 122px; bottom: 112px; margin: 0; display: flex; flex-direction: column; }
   .frame { flex: 1; min-height: 0; position: relative; border: 1px solid rgba(28, 27, 24, .55); }
   .frame::before { content: attr(data-num); position: absolute; left: 8px; top: 7px; font: 600 11px/1 var(--mono); letter-spacing: .1em; padding: 3px 6px; border: 1px solid rgba(28, 27, 24, .35); background: rgba(243, 239, 228, .9); }
   figcaption { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; font: 600 17px/1 var(--serif); }
   figcaption span { font: 500 9.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(28, 27, 24, .6); }
-  .tile { opacity: 0; transition: opacity .6s; }
-  .tile.on { opacity: 1; }
+  #plabels { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+  #plabels .lb { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; color: var(--ink); }
+  #plabels .lb b { display: inline-block; font: 600 40px/0.9 var(--serif); background: rgba(243, 239, 228, .9); padding: 2px 8px 4px; border-radius: 3px; }
+  #plabels .lb b small { font: 500 15px/1 var(--serif); font-style: italic; color: var(--accent); margin-left: 4px; }
+  #plabels .lb span { display: block; width: max-content; margin-left: auto; margin-right: auto; margin-top: 4px; font: 500 9px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; background: rgba(243, 239, 228, .85); padding: 2px 5px; }
+  #plabels .lb.s b { font-size: 19px; }
   /* carimbo */
   .carimbo { position: absolute; left: var(--gx); right: var(--gx); bottom: 38px; height: 58px; display: grid; grid-template-columns: 1.4fr 1.6fr 1fr .8fr .8fr; border: 1.5px solid var(--ink); }
   .carimbo > div { border-left: 1px solid rgba(28, 27, 24, .45); padding: 7px 10px; display: flex; flex-direction: column; justify-content: space-between; }
@@ -99,7 +102,8 @@
     h1 { font-size: 27px; }
     .sub { font-size: 8.5px; }
     .top .meta { display: none; }
-    .grid { top: 104px; bottom: 120px; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); column-gap: 10px; row-gap: 14px; }
+    .planta { top: 104px; bottom: 120px; }
+    #plabels .lb b { font-size: 20px; } #plabels .lb b small { font-size: 10px; } #plabels .lb span { display: none; } #plabels .lb.s b { font-size: 12px; }
     figcaption { font-size: 13px; margin-top: 4px; }
     figcaption span { font-size: 7.5px; }
     .frame::before { font-size: 9px; left: 5px; top: 5px; }
@@ -128,19 +132,13 @@
 <div id="sheet">
   <div class="top">
     <div>
-      <h1>Hotel Praia do Coqueiro <i>· a obra</i></h1>
-      <p class="sub">Sequência de construção · 15 apartamentos + recepção · prancha A-01</p>
+      <h1>Hotel Praia do Coqueiro <i>· a planta</i></h1>
+      <p class="sub">Estudo de implantação · 15 apartamentos + recepção · prancha A-01</p>
     </div>
-    <div class="meta">Perspectiva axonométrica<br>Etapas 01 — 06</div>
+    <div class="meta">Planta baixa · corte a 1,30 m<br>Mar a ~200 m &uarr;</div>
   </div>
-  <div class="grid" id="grid">
-    <figure class="tile"><div class="frame" data-num="01"></div><figcaption>Terreno vazio <span>mês 00</span></figcaption></figure>
-    <figure class="tile"><div class="frame" data-num="02"></div><figcaption>Fundações <span>meses 01–03</span></figcaption></figure>
-    <figure class="tile"><div class="frame" data-num="03"></div><figcaption>Estrutura <span>meses 03–06</span></figcaption></figure>
-    <figure class="tile"><div class="frame" data-num="04"></div><figcaption>Paredes <span>meses 06–09</span></figcaption></figure>
-    <figure class="tile"><div class="frame" data-num="05"></div><figcaption>Telhados de palha <span>meses 09–11</span></figcaption></figure>
-    <figure class="tile"><div class="frame" data-num="06"></div><figcaption>Paisagismo e piscina <span>meses 11–14</span></figcaption></figure>
-  </div>
+  <figure class="planta"><div class="frame" id="pframe" data-num="TÉRREO"></div>
+    <figcaption>Planta do térreo <span>aptos 1–7 + recepção · em cima 8–15</span></figcaption></figure>
   <div class="carimbo">
     <div><small>Projeto</small><b>Hotel Praia do Coqueiro</b></div>
     <div><small>Local</small><b>Praia do Coqueiro · Luís Correia, PI</b></div>
@@ -148,7 +146,9 @@
     <div><small>Escala</small><b class="m">sem escala</b></div>
     <div><small>Prancha</small><b class="m">A-01 · 2026</b></div>
   </div>
-  <div class="hint" id="hint"><i>&darr;</i>Role para começar a obra</div>
+  <div class="hint" id="hint"><i>&darr;</i>Role para ver a obra</div>
+</div>
+<div id="plabels">
 </div>
 <div id="hud">
   <div id="scrim"></div>
