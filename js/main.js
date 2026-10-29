@@ -51,7 +51,7 @@ const skyMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(c, 1.); }`,
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), skyMat);
-sky.scale.setScalar(3000); sky.renderOrder = -1; sky.frustumCulled = false;
+sky.scale.setScalar(3000); sky.renderOrder = -1; sky.frustumCulled = false; sky.userData.sky = true;
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envScene = new THREE.Scene(); envScene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 48, 24), skyMat));
@@ -149,7 +149,7 @@ const monthAt = (v) => clamp((v - Z.build[0]) / (Z.build[1] - Z.build[0]), 0, 1)
 
 // ---------------------------------------------------------------- nanquim
 const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
-const ink = makeInk(renderer, scene, cam, { samples: PHONE ? 0 : 4 });
+const ink = makeInk(renderer, scene, cam, { samples: PHONE ? 0 : 4, ao: !PHONE && !Q.has('noao') });
 let W = innerWidth, H = innerHeight;
 ink.setSize(W, H, DPR);
 const HIDE = [sky, world.bg, world.blades];

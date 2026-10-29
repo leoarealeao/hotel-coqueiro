@@ -382,7 +382,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     const tr = new THREE.InstancedMesh(p.trunk, trunkMat, mine.length), lf = new THREE.InstancedMesh(p.leaves, leafMat, mine.length);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
     mine.forEach(([x, z, a, s], i) => { q.setFromAxisAngle(V(0, 1, 0), a); m4.compose(V(x, 0, z), q, V(s, s, s)); tr.setMatrixAt(i, m4); lf.setMatrixAt(i, m4); });
-    tr.castShadow = lf.castShadow = true;
+    tr.castShadow = lf.castShadow = true; lf.userData.noAO = true;
     bg.add(tr, lf);
   });
   // restinga: moitas baixas, cada uma um tufo de 4 bolotas irregulares

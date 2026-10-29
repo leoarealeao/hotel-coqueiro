@@ -2,6 +2,9 @@
 // Ideia e função aim() adaptadas de "Flat to 3D / 04 Build Time-Lapse" (c) 2026 Samnang Aing, licença MIT
 // (ver js/LICENSE-flat-to-3d.txt). Cada prancha é o mesmo modelo visto por uma lente de 2°, desenhada no seu retângulo.
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 
 const DEG = Math.PI / 180;
 
@@ -125,6 +128,19 @@ export function makeInk(renderer, scene, cam, opt) {
   P.ndRT = new THREE.WebGLRenderTarget(4, 4, nearest);
   P.ndRT.depthTexture = new THREE.DepthTexture(4, 4, THREE.FloatType);
   P.realRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: opt.samples });
+  // o terreno real: render + oclusão ambiente (GTAO, como no 04) para a sombra de contato
+  if (opt.ao) {
+    P.comp = new EffectComposer(renderer, P.realRT); P.comp.renderToScreen = false;
+    P.comp.addPass(new RenderPass(scene, cam));
+    const ao = new GTAOPass(scene, cam, 4, 4);
+    ao.updateGtaoMaterial({ radius: 1.1, distanceExponent: 1.4, thickness: 1.6, scale: 1.7, samples: 16 });
+    ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+    ao.blendIntensity = 1.0;
+    ao.normalMaterial.side = THREE.DoubleSide; // peças de face dupla do GLB (poltronas, palha) entram no G-buffer
+    const r0 = ao.render.bind(ao); // vidro, céu e chão distante ficam fora da oclusão
+    ao.render = (...a) => { const hid = []; scene.traverse((m) => { if ((m.userData.kind === 'glass' || m.userData.sky || m.userData.palm || m.userData.noAO) && m.visible) { m.visible = false; hid.push(m); } }); r0(...a); hid.forEach((m) => (m.visible = true)); };
+    P.comp.addPass(ao); P.ao = ao;
+  }
   P.mat = new THREE.ShaderMaterial({
     uniforms: {
       tND: { value: P.ndRT.texture }, tDepth: { value: P.ndRT.depthTexture }, tReal: { value: P.realRT.texture },
@@ -157,7 +173,8 @@ export function makeInk(renderer, scene, cam, opt) {
   P.setSize = (W, H, dpr) => {
     P.W = W; P.H = H; P.dpr = dpr;
     const w = Math.round(W * dpr), h = Math.round(H * dpr);
-    P.ndRT.setSize(w, h); P.realRT.setSize(w, h);
+    P.ndRT.setSize(w, h);
+    if (P.comp) { P.comp.setPixelRatio(1); P.comp.setSize(w, h); } else P.realRT.setSize(w, h);
     P.mat.uniforms.uRes.value.set(w, h);
   };
   const dev = (r, out) => out.set(r.x * P.dpr, (P.H - r.y - r.h) * P.dpr, (r.x + r.w) * P.dpr, (P.H - r.y) * P.dpr);
@@ -191,7 +208,12 @@ export function makeInk(renderer, scene, cam, opt) {
     renderer.setRenderTarget(null); renderer.autoClear = keep;
     P.mat.uniforms.uNear.value = cam.near; P.mat.uniforms.uFar.value = cam.far;
   };
-  P.real = () => { renderer.setRenderTarget(P.realRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.render(scene, cam); renderer.setRenderTarget(null); };
+  P.real = () => {
+    renderer.setClearColor(0x000000, 1);
+    if (P.comp) { P.comp.render(); P.mat.uniforms.tReal.value = P.comp.readBuffer.texture; }
+    else { renderer.setRenderTarget(P.realRT); renderer.clear(); renderer.render(scene, cam); }
+    renderer.setRenderTarget(null);
+  };
   P.show = (o) => {
     const u = P.mat.uniforms;
     dev(o.rect0, u.uRect0.value);
