@@ -2,6 +2,7 @@
 // Carregam em segundo plano depois da abertura; cada peça fica no lugar e na escala real, apoiada no piso.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { buildInterior } from './interior.js';
 
 const DEG = Math.PI / 180;
 // [modelo, x, y do piso, z, giro (graus; 0 = frente para +z), largura máxima]
@@ -13,9 +14,9 @@ const PROPS = [
   ['potted_plant_04', 21.6, 0.1, 21.45, 140, 0.9],
   ['potted_plant_04', 24.35, 0.1, 20.9, 70, 0.9],
   ['chinese_sofa', 42.3, 3.0, 7.6, -90, 1.9],
-  ['round_wooden_table_01', 40.6, 3.0, 5.8, 0, 1.0],
-  ['wooden_stool_02', 40.6, 3.0, 5.05, 0, 0.9],
-  ['wooden_stool_02', 40.6, 3.0, 6.55, 0, 0.9],
+  ['wooden_table_02', 40.6, 3.0, 5.8, 90, 1.15],
+  ['chinese_stool', 40.0, 3.0, 5.8, 90, 0.55],
+  ['chinese_stool', 41.2, 3.0, 5.8, -90, 0.55],
   ['potted_plant_02', 39.75, 3.0, 8.25, 0, 0.6],
 ];
 // tecido cru: as almofadas da poltrona perdem o couro preto; o estampado floral do daybed vira linho
@@ -27,6 +28,7 @@ function restyle(n, m) {
 export async function loadProps(world, env, onDone) {
   const group = new THREE.Group(); group.visible = false;
   world.root.add(group); world.props = group;
+  group.add(buildInterior(world, env));
   const loader = new GLTFLoader(), cache = new Map();
   const get = (n) => { if (!cache.has(n)) cache.set(n, loader.loadAsync(`assets/models/${n}/${n}_1k.gltf`)); return cache.get(n); };
   await Promise.all(PROPS.map(async ([n, x, y, z, yaw, wMax]) => {

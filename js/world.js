@@ -184,6 +184,15 @@ export function makeMaterials(T, env) {
     } else if (kind === 'leaf') {
       m = std(hex, 0.8);
       patch(m, { kind, U, color: 'diffuseColor.rgb *= .75 + .45 * fbm(vWP.xz * 3. + vWP.y * 2.);' });
+    } else if (kind === 'door') {
+      // folhas de porta: freijó escuro com veio vertical, almofadas rebaixadas e cantos sombreados
+      m = std('#7a5236', 0.5);
+      patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
+        color: 'vec3 tx = triCW(uTex, .9); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .3, 2.2), .7) * .75;',
+        normal: 'normal = toView(triNW(uTexN, .9, 1.), normal);' });
+    } else if (kind === 'inox') {
+      m = std('#c9ccd0', 0.32, { metalness: 0.75, envMapIntensity: 1.0 });
+      patch(m, { kind, U, rough: 'roughnessFactor = .28 + .1 * vn(vec2(vWP.y * 400., (vWP.x + vWP.z) * 4.));' });
     } else if (kind === 'line') {
       m = std('#7b5e3a', 0.9);
       patch(m, { kind, U });
@@ -219,8 +228,9 @@ function classify(k, bb, hex) {
   if (k === 20) return C(4, 'plaster');
   if (k === 21) return C(4, 'wood');
   if (k === 22) return C(4, 'glass', 'y', 4);
-  if (k === 23) return C(4, 'wood');
+  if (k === 23) return C(4, 'door');
   if (k === 24 || k === 25) return C(6, 'keep');
+  if (k === 32) return C(6, 'inox');
   if (k >= 26 && k <= 38) return C(6, 'flat');
   if (k === 39) return C(5, 'thatch', 'y', 3);
   if (k === 40) return C(2, 'stone');
@@ -244,6 +254,8 @@ const ZONES = [
   [26.85, 27.65, 0, 1.7, 15.75, 16.55], [21.2, 22.0, 0, 1.7, 21.05, 21.85], [23.95, 24.75, 0, 1.7, 20.5, 21.3], // vasos
   [41.75, 42.75, 3.0, 4.2, 6.6, 8.65],      // apto 10: sofá
   [39.55, 41.65, 3.0, 3.95, 4.75, 6.6],     // apto 10: mesa e banquetas
+  [42.0, 42.75, 3.0, 4.0, 4.75, 6.55],      // apto 10: bancada, pia e cooktop (js/interior.js)
+  [36.05, 38.3, 3.0, 4.05, 5.45, 8.35],     // apto 10: cama do quarto 1 e criados
 ];
 function zoned(k, bb) {
   if (STRUCT.has(k)) return false;
