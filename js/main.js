@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { buildWorld, buildAt, STAGES, MONTHS, V } from './world.js';
 import { makeInk, aim, toK, lerpK } from './ink.js';
+import { loadProps } from './props.js';
 
 const Q = new URLSearchParams(location.search);
 const STILL = Q.has('still') || Q.has('offline'), OFFLINE = Q.has('offline');
@@ -225,6 +226,9 @@ ink.draw([{ rect: REST, cam: KP(REST), stage: 7, clipY: 1.3 }], HIDE);
 prog(1);
 await document.fonts.ready;
 $('#loader').classList.add('out');
+// móveis prontos em segundo plano (no modo offline, espera para as capturas)
+const propsP = loadProps(world, ENV, () => { renderer.shadowMap.needsUpdate = true; shadowKey = ''; envKey = ''; window.__dirty = true; });
+if (OFFLINE) await propsP;
 document.body.classList.add('ready');
 
 // ---------------------------------------------------------------- scroll
@@ -288,7 +292,8 @@ function render(now, forceV) {
   // desenho e terreno
   const rev = reveal(0, now);
   const key = [W, H, sv.toFixed(4), rev.toFixed(3)].join(',');
-  if (key === lastKey) return;
+  if (key === lastKey && !window.__dirty) return;
+  window.__dirty = false;
   lastKey = key;
   const D = k.h / Math.tan(k.fov * Math.PI / 360);
   scene.fog.near = D + (k.fov < 10 ? 80 : 60); scene.fog.far = D + (k.fov < 10 ? 1200 : 900);

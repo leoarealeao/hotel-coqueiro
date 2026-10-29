@@ -129,7 +129,7 @@ export function makeMaterials(T, env) {
       m = std('#ffffff', 0.97);
       patch(m, { kind, U, uniforms: { uS: { value: lin('#dcc59c') }, uG: { value: lin('#6d7f3c') }, uD: { value: lin('#a89064') }, uOut: { value: 0 }, uTex: { value: T.sand }, uTexN: { value: T.sandN } },
         head: 'uniform vec3 uS, uG, uD; uniform float uOut; uniform sampler2D uTex, uTexN;' + TRI,
-        color: `float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
+        color: `if (vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) discard; float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
           vec3 st = texture2D(uTex, vWP.xz * .4).rgb;
           vec3 c = uS * (.9 + .15 * mid) * mix(1., clamp(lum(st) / .1825, .3, 2.2), .7);
           float far = smoothstep(4., 14., max(max(-vWP.x, vWP.x - 53.), max(-vWP.z, vWP.z - 23.)));
@@ -143,7 +143,7 @@ export function makeMaterials(T, env) {
     } else if (kind === 'grass') {
       m = std('#ffffff', 0.95);
       patch(m, { kind, U, uniforms: { uA: { value: lin('#5c9534') }, uB: { value: lin('#97c052') } }, head: 'uniform vec3 uA, uB;',
-        color: `float n = fbm(vWP.xz * .6), f = vn(vWP.xz * 40.), g = vn(vWP.xz * 9.);
+        color: `if (vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) discard; float n = fbm(vWP.xz * .6), f = vn(vWP.xz * 40.), g = vn(vWP.xz * 9.);
           diffuseColor.rgb = mix(uA, uB, smoothstep(.3, .75, n * .7 + g * .3)) * (.88 + .2 * f);`,
         bump: 'hgt = vn(vWP.xz * 40.) * .01 + vn(vWP.xz * 9.) * .01;' });
     } else if (kind === 'water') {
@@ -152,6 +152,28 @@ export function makeMaterials(T, env) {
         color: 'float w = fbm(vWP.xz * 1.8 + uTime * .05); diffuseColor.rgb *= .85 + .3 * w; float edge = smoothstep(.0, 1.2, fbm(vWP.xz * .7)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.55, .85, .86), .12 * edge);',
         normal: `vec2 q = vWP.xz * 2.2; float e = .06; float h0 = fbm(q + uTime * .15), hx = fbm(q + vec2(e, 0.) + uTime * .15), hz = fbm(q + vec2(0., e) + uTime * .15);
           vec3 nW = normalize(vec3(-(hx - h0) / e * .07, 1., -(hz - h0) / e * .07)); normal = normalize((viewMatrix * vec4(nW, 0.)).xyz);` });
+    } else if (kind === 'hijau') {
+      // pedra hijau 20×20: peças verde-água com variação, rejunte, e debaixo d'água absorção + cáusticas
+      m = std('#ffffff', 0.55, { envMapIntensity: 0.5 });
+      patch(m, { kind, U, uniforms: { uTime: T.time, uA: { value: lin('#7cc2b0') }, uB: { value: lin('#b8e4d6') }, uC: { value: lin('#5aa596') } }, head: 'uniform float uTime; uniform vec3 uA, uB, uC;' + `
+        vec2 hjUV(){ vec3 n = abs(normalize(vWN)); return n.y > .5 ? vWP.xz : (n.x > .5 ? vWP.zy : vWP.xy); }
+        float hjGrout(vec2 uv){ vec2 f = fract(uv / .2); float e = min(min(f.x, 1. - f.x), min(f.y, 1. - f.y)); return 1. - smoothstep(.015, .045, e); }`,
+        color: `vec2 uv = hjUV(); vec2 cell = floor(uv / .2); float r1 = h21(cell * 1.37 + 3.1), r2 = h21(cell * 2.11 + 7.7);
+          vec3 c = mix(uA, uB, r1); c = mix(c, uC, smoothstep(.75, 1., r2) * .8);
+          c *= .82 + .3 * fbm(uv * 9. + r1 * 10.);
+          c = mix(c, vec3(.28, .33, .3), hjGrout(uv) * .75);
+          float under = smoothstep(.0, .06, -vWP.y), dd = clamp(-vWP.y / 1.4, 0., 1.);
+          vec3 absorb = mix(vec3(1.), vec3(.5, .95, .88), under) * (1. - .18 * dd);
+          float ca = pow(1. - abs(fbm(vWP.xz * 2.6 + uTime * .18) * 2. - 1.), 7.) + pow(1. - abs(fbm(vWP.xz * 3.7 - uTime * .14 + 4.) * 2. - 1.), 9.);
+          c = c * absorb + vec3(.55, .85, .8) * ca * .35 * under * (1. - .5 * dd);
+          diffuseColor.rgb = c;`,
+        bump: 'vec2 uv = hjUV(); hgt = -hjGrout(uv) * .004 + fbm(uv * 14.) * .0015;' });
+    } else if (kind === 'poolwater') {
+      m = new THREE.MeshPhysicalMaterial({ color: '#46c4b4', roughness: 0.03, metalness: 0, envMap: env, envMapIntensity: 1.3, transparent: true, depthWrite: false, clearcoat: 0.6, clearcoatRoughness: 0.03 });
+      patch(m, { kind, U, uniforms: { uTime: T.time }, head: 'uniform float uTime;',
+        color: 'vec3 Vd = normalize(cameraPosition - vWP); float fr = pow(1. - clamp(Vd.y, 0., 1.), 3.); diffuseColor.a = mix(.14, .85, fr); diffuseColor.rgb *= .6;',
+        normal: `vec2 q = vWP.xz * 1.7; float e = .05; float t = uTime * .22; float h0 = fbm(q + t), hx = fbm(q + vec2(e, 0.) + t), hz = fbm(q + vec2(0., e) + t);
+          vec3 nW = normalize(vec3(-(hx - h0) / e * .045, 1., -(hz - h0) / e * .045)); normal = normalize((viewMatrix * vec4(nW, 0.)).xyz);` });
     } else if (kind === 'glass') {
       m = new THREE.MeshPhysicalMaterial({ color: '#cfe6ec', roughness: 0.05, metalness: 0, transparent: true, opacity: 0.28, envMap: env, envMapIntensity: 1.2, depthWrite: false, side: THREE.DoubleSide });
       patch(m, { kind, U });
@@ -211,6 +233,22 @@ function classify(k, bb, hex) {
   if (k === 69) return null;
   if ([45, 46, 47, 56, 61].includes(k)) return C(6, 'fabric');
   return C(6, 'flat');
+}
+
+// -------------------------------------------------------------------------------------------- móveis trocados por modelos prontos (js/props.js)
+// as peças do GLB nessas caixas saem do render real, mas continuam no nanquim da planta
+const STRUCT = new Set([0, 4, 5, 16, 17, 18, 19, 20, 22, 37, 39, 40, 45, 46, 63]); // 41 fica fora: é também a madeira do sofá da recepção (as zonas param abaixo dos pilares)
+const ZONES = [
+  [21.3, 22.75, 0, 1.2, 16.0, 19.0],        // recepção: sofá
+  [23.9, 25.05, 0, 1.0, 16.15, 18.85],      // recepção: poltronas
+  [26.85, 27.65, 0, 1.7, 15.75, 16.55], [21.2, 22.0, 0, 1.7, 21.05, 21.85], [23.95, 24.75, 0, 1.7, 20.5, 21.3], // vasos
+  [41.75, 42.75, 3.0, 4.2, 6.6, 8.65],      // apto 10: sofá
+  [39.55, 41.65, 3.0, 3.95, 4.75, 6.6],     // apto 10: mesa e banquetas
+];
+function zoned(k, bb) {
+  if (STRUCT.has(k)) return false;
+  const x = (bb.min.x + bb.max.x) / 2, y = (bb.min.y + bb.max.y) / 2, z = (bb.min.z + bb.max.z) / 2;
+  return ZONES.some(([x0, x1, y0, y1, z0, z1]) => x > x0 && x < x1 && y > y0 && y < y1 && z > z0 && z < z1);
 }
 
 // -------------------------------------------------------------------------------------------- coqueiro (receita de referencia/blender/cena2.py)
@@ -305,8 +343,9 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     if (k === 69) { trunks.push({ x: (bb.min.x + bb.max.x) / 2, z: (bb.min.z + bb.max.z) / 2, h: bb.max.y }); return; }
     const c = classify(k, bb, o.material.color && o.material.color.getHexString());
     if (!c) return;
-    const key = `${k}|${c.stage}|${c.kind}|${c.mode}`;
-    if (!buckets.has(key)) buckets.set(key, { k, c, geos: [], mat: o.material });
+    const inkOnly = zoned(k, bb);
+    const key = `${k}|${c.stage}|${c.kind}|${c.mode}${inkOnly ? '|ink' : ''}`;
+    if (!buckets.has(key)) buckets.set(key, { k, c, geos: [], mat: o.material, inkOnly });
     // atributos uniformes para fundir
     for (const a of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(a)) g.deleteAttribute(a);
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
@@ -333,31 +372,43 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     mesh.castShadow = !flat && b.c.kind !== 'glass' && b.c.kind !== 'glow'; mesh.receiveShadow = true;
     if (b.c.kind === 'glass') mesh.renderOrder = 2;
     if (b.c.mode !== 'none') mesh.customDepthMaterial = depthPatch(U);
-    mesh.userData = { stage: b.c.stage, ink: b.c.ink, U, lo, hi, mode: b.c.mode, k: b.k, kind: b.c.kind, hotel: true, noink: b.k === 70 };
+    mesh.userData = { stage: b.c.stage, ink: b.c.ink, U, lo, hi, mode: b.c.mode, k: b.k, kind: b.c.kind, hotel: true, noink: b.k === 70, inkOnly: b.inkOnly };
     root.add(mesh); groups.push(mesh);
   }
   // o chão de fora usa a variação de restinga
   groups.filter((g) => g.userData.k === 70).forEach((g) => { g.material = M.make('sand', '#cdbf9f', g.userData.U); g.material.userData.out = 1; setOut(g.material); });
 
-  // piscina reta, 15 × 2 m, entre as duas escadas (x 29,25–44,25), no eixo do pátio (z 12–14)
+  // piscina reta, 15 × 2 m, entre as duas escadas (x 29,25–44,25), no eixo do pátio (z 12–14): tanque de 1,4 m em pedra hijau
   {
-    const P = { x0: 29.25, x1: 44.25, z0: 12.0, z1: 14.0 };
-    const add = (geo, kind, hex, ink, mode) => {
+    const P = { x0: 29.25, x1: 44.25, z0: 12.0, z1: 14.0, d: 1.4 };
+    const add = (geo, kind, ink, cast) => {
       geo.computeBoundingBox(); const bb = geo.boundingBox;
       const U = { uCut: { value: 1e4 }, uAxis: { value: V(1, 0, 0) }, uBand: { value: 0 } };
-      const m = new THREE.Mesh(geo, M.make(kind, hex, U)); m.receiveShadow = true;
-      if (kind === 'stone') { m.castShadow = true; m.customDepthMaterial = depthPatch(U); }
-      m.userData = { stage: 6, ink, U, lo: bb.min.x - 0.05, hi: bb.max.x + 0.05, mode, hotel: true, kind };
+      const m = new THREE.Mesh(geo, M.make(kind, '#ffffff', U)); m.receiveShadow = true;
+      if (cast) { m.castShadow = true; m.customDepthMaterial = depthPatch(U); }
+      if (kind === 'poolwater') m.renderOrder = 3;
+      m.userData = { stage: 6, ink, U, lo: bb.min.x - 0.05, hi: bb.max.x + 0.05, mode: 'x', hotel: true, kind };
       root.add(m); groups.push(m);
     };
-    const water = new THREE.PlaneGeometry(P.x1 - P.x0, P.z1 - P.z0).rotateX(-Math.PI / 2).translate((P.x0 + P.x1) / 2, 0.06, (P.z0 + P.z1) / 2);
-    add(water, 'water', '#2cb6bf', 2, 'x');
-    const b = 0.3, hgt = 0.1, cx = (P.x0 + P.x1) / 2, L = P.x1 - P.x0 + 2 * b, Wd = P.z1 - P.z0;
-    const parts = [
-      new THREE.BoxGeometry(L, hgt, b).translate(cx, hgt / 2, P.z0 - b / 2), new THREE.BoxGeometry(L, hgt, b).translate(cx, hgt / 2, P.z1 + b / 2),
-      new THREE.BoxGeometry(b, hgt, Wd).translate(P.x0 - b / 2, hgt / 2, (P.z0 + P.z1) / 2), new THREE.BoxGeometry(b, hgt, Wd).translate(P.x1 + b / 2, hgt / 2, (P.z0 + P.z1) / 2),
+    const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2, L = P.x1 - P.x0, Wd = P.z1 - P.z0;
+    // tanque: fundo e quatro paredes voltadas para dentro
+    const basin = [
+      new THREE.PlaneGeometry(L, Wd).rotateX(-Math.PI / 2).translate(cx, -P.d, cz),
+      new THREE.PlaneGeometry(L, P.d + 0.1).translate(cx, -P.d / 2 + 0.05, P.z0),
+      new THREE.PlaneGeometry(L, P.d + 0.1).rotateY(Math.PI).translate(cx, -P.d / 2 + 0.05, P.z1),
+      new THREE.PlaneGeometry(Wd, P.d + 0.1).rotateY(Math.PI / 2).translate(P.x0, -P.d / 2 + 0.05, cz),
+      new THREE.PlaneGeometry(Wd, P.d + 0.1).rotateY(-Math.PI / 2).translate(P.x1, -P.d / 2 + 0.05, cz),
     ];
-    add(mergeGeometries(parts.map((g) => g.toNonIndexed())), 'stone', '#e6dcc6', 0, 'x');
+    add(mergeGeometries(basin.map((g) => g.toNonIndexed())), 'hijau', 0, false);
+    // borda de pedra (0,35 m) um pouco acima da grama
+    const b = 0.35, hgt = 0.1, Lb = L + 2 * b;
+    const edge = [
+      new THREE.BoxGeometry(Lb, hgt, b).translate(cx, hgt / 2, P.z0 - b / 2), new THREE.BoxGeometry(Lb, hgt, b).translate(cx, hgt / 2, P.z1 + b / 2),
+      new THREE.BoxGeometry(b, hgt, Wd).translate(P.x0 - b / 2, hgt / 2, cz), new THREE.BoxGeometry(b, hgt, Wd).translate(P.x1 + b / 2, hgt / 2, cz),
+    ];
+    add(mergeGeometries(edge.map((g) => g.toNonIndexed())), 'hijau', 0, true);
+    // lâmina d'água 4 cm abaixo da borda
+    add(new THREE.PlaneGeometry(L, Wd).rotateX(-Math.PI / 2).translate(cx, 0.06, cz), 'poolwater', 2, false);
   }
   // gabarito da obra (só na etapa 1): linha de estacas no perímetro do lote
   {
@@ -468,10 +519,10 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   // grama em folhas no pátio (aparece no paisagismo)
   let blades = null;
   {
-    const NB = phone ? 9000 : 60000;
+    const NB = phone ? 9000 : 140000;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute([-0.012, 0, 0, 0.012, 0, 0, 0.0, 1, 0.004], 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0.3, 1, 0, 0.3, 1, 0, 0.3, 1], 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0.25, 0, 1, 0.25, 0, 1, 0.25], 3));
     const mat = new THREE.MeshStandardMaterial({ color: '#86b24a', roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
     const Ub = { uGrow: { value: 0 } };
     mat.customProgramCacheKey = () => 'hc-blade';
@@ -480,7 +531,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
       s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform float uGrow; varying float vH;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n vH = position.y; transformed.y *= uGrow;');
       s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vH;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= mix(.7, 1.15, vH);');
+        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= mix(.82, 1.12, vH);');
     };
     const im = new THREE.InstancedMesh(g, mat, NB);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
@@ -490,7 +541,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
       if (x > 28.9 && x < 44.6 && z > 11.65 && z < 14.35) continue; // piscina
       if (x < 27.5 && z < 12.6 && x > 21.5 && z > 11) continue;
       e.set((r() - 0.5) * 0.5, r() * 6.28, (r() - 0.5) * 0.5); q.setFromEuler(e);
-      const h = 0.05 + r() * 0.07;
+      const h = 0.045 + r() * 0.05;
       m4.compose(V(x, 0.0, z), q, V(1 + r(), h, 1)); im.setMatrixAt(n, m4);
       im.setColorAt(n, col.setHSL(0.23 + r() * 0.05, 0.42 + r() * 0.18, 0.42 + r() * 0.16)); n++;
     }
@@ -510,6 +561,7 @@ function setOut(m) {
 export function buildAt(world, month) {
   for (const g of world.groups) {
     const d = g.userData, [a, b] = STAGES[d.stage];
+    if (d.inkOnly) { g.visible = false; continue; }
     if (d.stage === 0) { g.visible = true; d.U.uCut.value = 1e4; d.U.uBand.value = 0; continue; }
     if (d.mode === 'gone') { g.visible = month < 2.4; continue; }
     const t = Math.max(0, Math.min(1, (month - a) / (b - a)));
@@ -518,6 +570,7 @@ export function buildAt(world, month) {
     d.U.uCut.value = t >= 1 ? 1e4 : d.lo + (d.hi - d.lo) * tt;
     d.U.uBand.value = t > 0 && t < 1 && d.stage <= 5 ? 0.6 : 0;
   }
+  if (world.props) world.props.visible = month > 12.8;
   if (world.blades) {
     const t = Math.max(0, Math.min(1, (month - 11.6) / 1.6));
     world.blades.visible = t > 0; world.blades.userData.U.uGrow.value = t;
