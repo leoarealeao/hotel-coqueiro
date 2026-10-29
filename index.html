@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hotel Praia do Coqueiro</title>
+<meta name="description" content="Estudo preliminar de um pequeno hotel de apartamentos na Praia do Coqueiro, Luís Correia (PI). Da prancha de obra à caminhada pelo hotel pronto.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3efe4;
+    --ink: #1c1b18;
+    --accent: #b5542b;
+    --gx: 28px;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body { overflow-x: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+  #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+  #track { height: 2200vh; }
+
+  /* a prancha: tudo que mergulha junto com o papel */
+  #sheet { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 1; transform-origin: 0 0; pointer-events: none; will-change: transform, opacity; }
+  .top { position: absolute; left: var(--gx); right: var(--gx); top: 26px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; border-bottom: 1.5px solid var(--ink); padding-bottom: 12px; }
+  h1 { font: 600 44px/0.95 var(--serif); margin: 0; letter-spacing: -.01em; }
+  h1 i { font-weight: 500; color: var(--accent); }
+  .sub { font: 500 10.5px/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0 2px; color: rgba(28, 27, 24, .75); }
+  .top .meta { font: 500 10px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-align: right; color: rgba(28, 27, 24, .7); }
+  .grid { position: absolute; left: var(--gx); right: var(--gx); top: 122px; bottom: 112px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); column-gap: 18px; row-gap: 22px; }
+  figure.tile { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+  .frame { flex: 1; min-height: 0; position: relative; border: 1px solid rgba(28, 27, 24, .55); }
+  .frame::before { content: attr(data-num); position: absolute; left: 8px; top: 7px; font: 600 11px/1 var(--mono); letter-spacing: .1em; padding: 3px 6px; border: 1px solid rgba(28, 27, 24, .35); background: rgba(243, 239, 228, .9); }
+  figcaption { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; font: 600 17px/1 var(--serif); }
+  figcaption span { font: 500 9.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(28, 27, 24, .6); }
+  .tile { opacity: 0; transition: opacity .6s; }
+  .tile.on { opacity: 1; }
+  /* carimbo */
+  .carimbo { position: absolute; left: var(--gx); right: var(--gx); bottom: 38px; height: 58px; display: grid; grid-template-columns: 1.4fr 1.6fr 1fr .8fr .8fr; border: 1.5px solid var(--ink); }
+  .carimbo > div { border-left: 1px solid rgba(28, 27, 24, .45); padding: 7px 10px; display: flex; flex-direction: column; justify-content: space-between; }
+  .carimbo > div:first-child { border-left: 0; }
+  .carimbo small { font: 500 8.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgba(28, 27, 24, .55); }
+  .carimbo b { font: 600 17px/1.05 var(--serif); }
+  .carimbo b.m { font: 600 12px/1 var(--mono); letter-spacing: .06em; }
+  .hint { position: absolute; left: 50%; bottom: 104px; transform: translate(-50%, 50%); font: 600 10px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 7px 13px; opacity: 0; transition: opacity .6s; white-space: nowrap; }
+  .hint i { font-style: normal; color: #e9a37f; margin-right: 6px; }
+  .hint.on { opacity: 1; }
+
+  /* sobre o terreno */
+  #hud { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  .chip { position: absolute; left: var(--gx); top: 26px; font: 500 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; background: rgba(28, 27, 24, .86); color: var(--paper); padding: 8px 12px; border-left: 3px solid var(--accent); opacity: 0; transition: opacity .4s; white-space: nowrap; }
+  .chip i { font-style: normal; color: #f0b892; }
+  .chip.on { opacity: 1; }
+  #cal { position: absolute; left: var(--gx); bottom: 52px; width: 420px; padding: 14px 16px 12px; background: rgba(243, 239, 228, .9); border: 1px solid rgba(28, 27, 24, .3); border-left: 3px solid var(--accent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font: 500 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: 0; }
+  #cal .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  #cal .hd b { font: 600 22px/1 var(--serif); letter-spacing: 0; text-transform: none; }
+  #cal .hd b em { font-style: italic; color: var(--accent); }
+  #cal .rows { position: relative; }
+  #cal .row { display: grid; grid-template-columns: 138px 1fr; align-items: center; height: 13px; }
+  #cal .trk { position: relative; height: 5px; }
+  #cal .plan { position: absolute; top: 0; height: 5px; background: rgba(28, 27, 24, .16); }
+  #cal .done { position: absolute; inset: 0; background: var(--accent); transform-origin: 0 0; transform: scaleX(0); }
+  #cal .now { position: absolute; top: -4px; bottom: -4px; width: 1.5px; background: var(--accent); }
+  #cal .axis { display: grid; grid-template-columns: 138px 1fr; margin-top: 6px; color: rgba(28, 27, 24, .55); }
+  #cal .axis div { display: flex; justify-content: space-between; }
+
+  .say { position: absolute; left: var(--gx); top: 50%; transform: translateY(-50%); max-width: min(1100px, 88vw); opacity: 0; }
+  .say p { margin: 0; font: 600 clamp(34px, 4.6vw, 72px)/1 var(--serif); color: #fffaf0; text-shadow: 0 2px 24px rgba(20, 16, 10, .45), 0 1px 2px rgba(20, 16, 10, .35); letter-spacing: -.01em; }
+  .say p i { font-weight: 500; color: #ffd9b8; }
+  .say small { display: block; margin-top: 14px; font: 500 11px/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #fffaf0; text-shadow: 0 1px 8px rgba(20, 16, 10, .6); }
+  .say.dark p { color: var(--ink); text-shadow: 0 1px 18px rgba(243, 239, 228, .8); }
+  .say.dark small { color: var(--ink); text-shadow: none; }
+  #scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(25, 18, 10, .38), rgba(25, 18, 10, 0) 60%); opacity: 0; }
+  .cap { position: absolute; right: var(--gx); top: 26px; text-align: right; opacity: 0; transition: opacity .45s; }
+  .cap.on { opacity: 1; }
+  .cap b { display: block; font: 600 26px/1 var(--serif); color: #fffaf0; text-shadow: 0 1px 14px rgba(20, 16, 10, .55); }
+  .cap span { display: inline-block; margin-top: 6px; font: 500 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #fffaf0; text-shadow: 0 1px 8px rgba(20, 16, 10, .7); }
+
+  #end { position: fixed; inset: 0; z-index: 4; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 var(--gx); pointer-events: none; opacity: 0; }
+  #end h2 { margin: 0; font: 600 clamp(40px, 6vw, 88px)/0.95 var(--serif); color: #fffaf0; text-shadow: 0 2px 30px rgba(20, 16, 10, .5); }
+  #end h2 i { font-weight: 500; color: #ffd9b8; }
+  #end ul { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  #end li { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper); background: rgba(28, 27, 24, .72); padding: 9px 12px; border-left: 3px solid var(--accent); }
+
+  footer.rodape { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 6; font: 500 10px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); background: rgba(243, 239, 228, .86); padding: 6px 12px; border: 1px solid rgba(28, 27, 24, .25); white-space: nowrap; pointer-events: none; }
+
+  #loader { position: fixed; inset: 0; z-index: 10; background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity .7s; }
+  #loader b { font: 600 34px/1 var(--serif); }
+  #loader .bar { width: 220px; height: 2px; background: rgba(28, 27, 24, .15); position: relative; }
+  #loader .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); }
+  #loader span { font: 500 10px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: rgba(28, 27, 24, .6); }
+  #loader.out { opacity: 0; pointer-events: none; }
+
+  @media (max-width: 700px) {
+    :root { --gx: 14px; }
+    .top { top: 16px; flex-direction: column; align-items: flex-start; gap: 6px; }
+    h1 { font-size: 27px; }
+    .sub { font-size: 8.5px; }
+    .top .meta { display: none; }
+    .grid { top: 104px; bottom: 120px; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); column-gap: 10px; row-gap: 14px; }
+    figcaption { font-size: 13px; margin-top: 4px; }
+    figcaption span { font-size: 7.5px; }
+    .frame::before { font-size: 9px; left: 5px; top: 5px; }
+    .carimbo { bottom: 36px; height: 70px; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .carimbo > div { padding: 4px 8px; }
+    .carimbo > div:nth-child(n+3) { display: none; }
+    .carimbo b { font-size: 14px; }
+    .hint { bottom: 116px; }
+    .chip { top: 14px; font-size: 9px; }
+    #cal { width: calc(100vw - 28px - 32px); bottom: 44px; padding: 10px 12px; }
+    #cal .row, #cal .axis { grid-template-columns: 112px 1fr; }
+    .cap { top: 50px; }
+    .cap b { font-size: 20px; }
+    footer.rodape { font-size: 8.5px; letter-spacing: .1em; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="sheet">
+  <div class="top">
+    <div>
+      <h1>Hotel Praia do Coqueiro <i>· a obra</i></h1>
+      <p class="sub">Sequência de construção · 15 apartamentos + recepção · prancha A-01</p>
+    </div>
+    <div class="meta">Perspectiva axonométrica<br>Etapas 01 — 06</div>
+  </div>
+  <div class="grid" id="grid">
+    <figure class="tile"><div class="frame" data-num="01"></div><figcaption>Terreno vazio <span>mês 00</span></figcaption></figure>
+    <figure class="tile"><div class="frame" data-num="02"></div><figcaption>Fundações <span>meses 01–03</span></figcaption></figure>
+    <figure class="tile"><div class="frame" data-num="03"></div><figcaption>Estrutura <span>meses 03–06</span></figcaption></figure>
+    <figure class="tile"><div class="frame" data-num="04"></div><figcaption>Paredes <span>meses 06–09</span></figcaption></figure>
+    <figure class="tile"><div class="frame" data-num="05"></div><figcaption>Telhados de palha <span>meses 09–11</span></figcaption></figure>
+    <figure class="tile"><div class="frame" data-num="06"></div><figcaption>Paisagismo e piscina <span>meses 11–14</span></figcaption></figure>
+  </div>
+  <div class="carimbo">
+    <div><small>Projeto</small><b>Hotel Praia do Coqueiro</b></div>
+    <div><small>Local</small><b>Praia do Coqueiro · Luís Correia, PI</b></div>
+    <div><small>Terreno</small><b class="m">53 × 23 m · ~1.200 m²</b></div>
+    <div><small>Escala</small><b class="m">sem escala</b></div>
+    <div><small>Prancha</small><b class="m">A-01 · 2026</b></div>
+  </div>
+  <div class="hint" id="hint"><i>&darr;</i>Role para começar a obra</div>
+</div>
+<div id="hud">
+  <div id="scrim"></div>
+  <div class="chip" id="chip"></div>
+  <div class="cap" id="cap"><b></b><span></span></div>
+  <div class="say" data-a="3.0" data-b="4.7"><p>Praia do Coqueiro <i>· 200 m do mar</i></p><small>Luís Correia, PI · terreno de ~1.200 m² entre coqueiros</small></div>
+  <div class="say" data-a="9.4" data-b="10.9"><p>15 apartamentos <i>+ recepção</i></p><small>dois blocos baixos em volta de um pátio com piscina</small></div>
+  <div class="say" data-a="16.8" data-b="17.9"><p>1 e 2 quartos <i>· varandas para a piscina</i></p><small>redes de tecido cru · guarda-corpos de varas de madeira</small></div>
+  <div id="cal">
+    <div class="hd"><span>Cronograma da obra</span><b>Mês <em id="calm">00</em></b></div>
+    <div class="rows" id="calrows"></div>
+    <div class="axis"><span></span><div><span>0</span><span>3</span><span>6</span><span>9</span><span>12</span><span>14</span></div></div>
+  </div>
+</div>
+<div id="end">
+  <h2>Hotel Praia <i>do Coqueiro</i></h2>
+  <ul><li>15 apartamentos + recepção</li><li>1 e 2 quartos</li><li>200 m do mar</li><li>Luís Correia · PI</li></ul>
+</div>
+<footer class="rodape">Estudo preliminar · imagens ilustrativas</footer>
+<div id="loader"><b>Praia do Coqueiro</b><div class="bar"><i id="loadbar"></i></div><span id="loadtxt">Abrindo a prancha…</span></div>
+<div id="track"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
