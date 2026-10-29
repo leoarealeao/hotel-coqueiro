@@ -9,6 +9,6 @@ prancha de obra em nanquim → mergulho na prancha 01 → a obra sobe mês a mê
 - Vídeo do percurso: `entrega/percurso.mp4`.
 
 Técnica baseada em [Flat to 3D / 04 Build Time-Lapse](https://github.com/Sam1983Aing/flat-to-3d), MIT — ver `js/LICENSE-flat-to-3d.txt`.
-Texturas de reboco e carvalho: Poly Haven (CC0).
+Texturas: Poly Haven (CC0) — white_stucco, dark_wood, smooth_concrete_floor, thatch_roof_angled, coast_sand_01.
 
 *Estudo preliminar · imagens ilustrativas.*

@@ -66,16 +66,24 @@ function depthPatch(U) {
   return m;
 }
 
+// triplanar: cor e normal (mistura "whiteout"); W = madeira, com o veio na vertical nas faces laterais
 const TRI = `
-  vec3 triTex(sampler2D t, float sc){
-    vec3 b = pow(abs(vWN), vec3(4.)); b /= (b.x + b.y + b.z);
-    return texture2D(t, vec2(vWP.z, vWP.y * .35) * sc).rgb * b.x + texture2D(t, vWP.xz * sc).rgb * b.y + texture2D(t, vec2(vWP.x, vWP.y * .35) * sc).rgb * b.z;
-  }`;
-const TRI_PLASTER = `
-  vec3 triTex(sampler2D t, float sc){
-    vec3 b = pow(abs(vWN), vec3(4.)); b /= (b.x + b.y + b.z);
-    return texture2D(t, vWP.zy * sc).rgb * b.x + texture2D(t, vWP.xz * sc).rgb * b.y + texture2D(t, vWP.xy * sc).rgb * b.z;
-  }`;
+  vec3 triB(){ vec3 b = pow(abs(vWN), vec3(4.)); return b / (b.x + b.y + b.z); }
+  vec3 triC(sampler2D t, float sc){ vec3 b = triB();
+    return texture2D(t, vWP.zy * sc).rgb * b.x + texture2D(t, vWP.xz * sc).rgb * b.y + texture2D(t, vWP.xy * sc).rgb * b.z; }
+  vec3 triCW(sampler2D t, float sc){ vec3 b = triB();
+    return texture2D(t, vec2(vWP.y * .35, vWP.z) * sc).rgb * b.x + texture2D(t, vWP.xz * sc).rgb * b.y + texture2D(t, vec2(vWP.y * .35, vWP.x) * sc).rgb * b.z; }
+  vec3 wn(vec3 tx, vec3 ty, vec3 tz, float k){ vec3 n = normalize(vWN), b = triB();
+    tx.xy *= k; ty.xy *= k; tz.xy *= k;
+    tx = vec3(tx.xy + n.zy, abs(tx.z) * n.x); ty = vec3(ty.xy + n.xz, abs(ty.z) * n.y); tz = vec3(tz.xy + n.xy, abs(tz.z) * n.z);
+    return normalize(tx.zyx * b.x + ty.xzy * b.y + tz.xyz * b.z); }
+  vec3 triN(sampler2D t, float sc, float k){
+    return wn(texture2D(t, vWP.zy * sc).xyz * 2. - 1., texture2D(t, vWP.xz * sc).xyz * 2. - 1., texture2D(t, vWP.xy * sc).xyz * 2. - 1., k); }
+  vec3 triNW(sampler2D t, float sc, float k){
+    return wn((texture2D(t, vec2(vWP.y * .35, vWP.z) * sc).xyz * 2. - 1.).yxz, texture2D(t, vWP.xz * sc).xyz * 2. - 1., (texture2D(t, vec2(vWP.y * .35, vWP.x) * sc).xyz * 2. - 1.).yxz, k); }
+  // normal de mundo -> normal de vista, respeitando a face (materiais de face dupla)
+  vec3 toView(vec3 nW, vec3 nGeo){ vec3 gW = (vec4(nGeo, 0.) * viewMatrix).xyz; if (dot(gW, vWN) < 0.) nW = -nW; return normalize((viewMatrix * vec4(nW, 0.)).xyz); }
+  float lum(vec3 c){ return dot(c, vec3(.299, .587, .114)); }`;
 
 // -------------------------------------------------------------------------------------------- materiais
 export function makeMaterials(T, env) {
@@ -84,47 +92,46 @@ export function makeMaterials(T, env) {
   M.make = (kind, hex, U) => {
     let m;
     if (kind === 'plaster') {
-      m = std(hex, 0.92);
-      patch(m, { kind, U, uniforms: { uTex: { value: T.plaster }, uTexR: { value: T.plasterR } }, head: 'uniform sampler2D uTex, uTexR;' + TRI_PLASTER,
-        color: 'vec3 tx = triTex(uTex, .45); diffuseColor.rgb *= mix(vec3(1.), tx / vec3(.691, .659, .613), .55); diffuseColor.rgb *= .94 + .1 * fbm(vWP.xz * .4 + vWP.y * .3);',
-        rough: 'roughnessFactor = .78 + .22 * triTex(uTexR, .45).r;',
-        bump: 'vec3 th = triTex(uTex, .45); hgt = dot(th, vec3(.33)) * .016 + vn(vWP.xy * 7. + vWP.zy * 7.) * .003;' });
+      m = std(hex, 0.9);
+      patch(m, { kind, U, uniforms: { uTex: { value: T.stucco }, uTexN: { value: T.stuccoN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
+        color: 'vec3 tx = triC(uTex, .55); diffuseColor.rgb *= mix(vec3(1.), tx / vec3(.6837, .6511, .6285), .7); diffuseColor.rgb *= .95 + .08 * fbm(vWP.xz * .35 + vWP.y * .3);',
+        normal: 'normal = toView(triN(uTexN, .55, 1.4), normal);' });
     } else if (kind === 'wood') {
-      m = std(hex, 0.62);
-      patch(m, { kind, U, uniforms: { uTex: { value: T.oak } }, head: 'uniform sampler2D uTex;' + TRI,
-        color: 'vec3 tx = triTex(uTex, .55); diffuseColor.rgb *= mix(vec3(1.), tx / vec3(.565, .475, .385), .85);',
-        bump: 'hgt = (1. - dot(triTex(uTex, .55), vec3(.33))) * .006;' });
+      m = std(hex, 0.55);
+      patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
+        color: 'vec3 tx = triCW(uTex, .7); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .25, 2.5), .8) * .5;',
+        normal: 'normal = toView(triNW(uTexN, .7, 1.), normal);' });
     } else if (kind === 'cement') {
-      m = std('#b9b5ad', 0.55);
-      patch(m, { kind, U, color: 'float n = fbm(vWP.xz * .9) * .6 + fbm(vWP.xz * 6.) * .4; diffuseColor.rgb *= .78 + .34 * n;',
-        rough: 'roughnessFactor = .45 + .25 * fbm(vWP.xz * 1.7);', bump: 'hgt = fbm(vWP.xz * 14.) * .0012;' });
+      m = std('#b6b2aa', 0.5);
+      patch(m, { kind, U, uniforms: { uTex: { value: T.conc }, uTexN: { value: T.concN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
+        color: 'vec3 tx = triC(uTex, .35); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0577, .3, 2.2), .6) * (.9 + .15 * fbm(vWP.xz * .7));',
+        rough: 'roughnessFactor = .35 + .2 * clamp(lum(triC(uTex, .35)) / .0577, 0., 2.);',
+        normal: 'normal = toView(triN(uTexN, .35, .7), normal);' });
     } else if (kind === 'stone') {
       m = std(hex, 0.8);
       patch(m, { kind, U, color: 'float n = fbm(vWP.xz * 2.5); diffuseColor.rgb *= .82 + .3 * n;', bump: 'hgt = fbm(vWP.xz * 9. + vWP.y * 9.) * .004;' });
     } else if (kind === 'thatch') {
-      m = std('#ffffff', 1.0);
-      patch(m, { kind, U, uniforms: { uA: { value: lin('#6e5837') }, uB: { value: lin('#cdb383') } }, head: 'uniform vec3 uA, uB;',
-        color: `vec3 n = normalize(vWN); vec3 t = normalize(cross(n, vec3(0., 1., 0.)) + vec3(1e-4)); vec3 sl = cross(t, n);
-          float u = dot(vWP, t), v = dot(vWP, sl);
-          float aa = smoothstep(.25, .9, fwidth(u * 38.));
-          float fib = mix(fbm(vec2(u * 38., v * 1.4)) * .7 + vn(vec2(u * 140., v * 3.)) * .3 * (1. - aa), .47, aa * .85);
-          float row = fract(v * 3.1 + vn(vec2(u * 2.5, 0.)) * .08);
-          vec3 c = mix(uA, uB, smoothstep(.25, .78, fib));
-          c *= mix(1., .55, smoothstep(.8, .99, row));
-          c *= .82 + .3 * fbm(vWP.xz * .35);
+      m = std('#ffffff', 1.0, { envMapIntensity: 0.35 });
+      patch(m, { kind, U, uniforms: { uTex: { value: T.thatch }, uTexN: { value: T.thatchN }, uTone: { value: lin('#9c7c4a') } }, head: 'uniform sampler2D uTex, uTexN; uniform vec3 uTone;' + TRI,
+        color: `vec3 n = normalize(vWN); if (n.y < 0.) n = -n; vec3 t = normalize(cross(n, vec3(0., 1., 0.)) + vec3(1e-4)); vec3 sl = cross(t, n);
+          vec2 uv = vec2(dot(vWP, t), dot(vWP, sl)) * 1.1;
+          vec3 tx = texture2D(uTex, uv).rgb;
+          float row = fract(dot(vWP, sl) * 2.6 + vn(vec2(dot(vWP, t) * 1.5, 0.)) * .06);
+          vec3 c = uTone * pow(clamp(lum(tx) / .0871, 0., 3.), .85) * (.88 + .22 * fbm(vWP.xz * .3));
+          c *= mix(1., .62, smoothstep(.86, .99, row));
           diffuseColor.rgb = c;`,
-        normal: 'if ((vec4(normal, 0.) * viewMatrix).y < 0.) normal = -normal;',
-        bump: `vec3 nw = normalize(vWN); vec3 tt = normalize(cross(nw, vec3(0., 1., 0.)) + vec3(1e-4)); vec3 ss = cross(tt, nw);
-          float uu = dot(vWP, tt), vv = dot(vWP, ss);
-          float ab = smoothstep(.25, .9, fwidth(uu * 38.));
-          float fb = mix(fbm(vec2(uu * 38., vv * 1.4)) * .7 + vn(vec2(uu * 140., vv * 3.)) * .3, .47, ab);
-          float rw = fract(vv * 3.1 + vn(vec2(uu * 2.5, 0.)) * .08);
-          hgt = fb * .018 + rw * .05;` });
+        normal: `{ vec3 n = normalize(vWN); if (n.y < 0.) n = -n; vec3 t = normalize(cross(n, vec3(0., 1., 0.)) + vec3(1e-4)); vec3 sl = cross(t, n);
+          vec2 uv = vec2(dot(vWP, t), dot(vWP, sl)) * 1.1;
+          vec3 tn = texture2D(uTexN, uv).xyz * 2. - 1.; tn.xy *= 0.9;
+          vec3 nW = normalize(t * tn.x + sl * tn.y + n * tn.z);
+          normal = normalize((viewMatrix * vec4(nW, 0.)).xyz); }` });
     } else if (kind === 'sand') {
       m = std('#ffffff', 0.97);
-      patch(m, { kind, U, uniforms: { uS: { value: lin('#dcc59c') }, uG: { value: lin('#6d7f3c') }, uD: { value: lin('#a89064') }, uOut: { value: 0 } }, head: 'uniform vec3 uS, uG, uD; uniform float uOut;',
+      patch(m, { kind, U, uniforms: { uS: { value: lin('#dcc59c') }, uG: { value: lin('#6d7f3c') }, uD: { value: lin('#a89064') }, uOut: { value: 0 }, uTex: { value: T.sand }, uTexN: { value: T.sandN } },
+        head: 'uniform vec3 uS, uG, uD; uniform float uOut; uniform sampler2D uTex, uTexN;' + TRI,
         color: `float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
-          vec3 c = uS * (.86 + .2 * mid) * (.93 + .14 * fine);
+          vec3 st = texture2D(uTex, vWP.xz * .4).rgb;
+          vec3 c = uS * (.9 + .15 * mid) * mix(1., clamp(lum(st) / .1825, .3, 2.2), .7);
           float far = smoothstep(4., 14., max(max(-vWP.x, vWP.x - 53.), max(-vWP.z, vWP.z - 23.)));
           float veg = smoothstep(.47, .62, big + .25 * mid) * uOut * far;
           c = mix(c, uD * (.8 + .3 * mid), smoothstep(.35, .5, big) * .35 * uOut * far);
@@ -132,12 +139,12 @@ export function makeMaterials(T, env) {
           float beach = smoothstep(-120., -150., vWP.z);
           c = mix(c, uS * 1.08 * (.92 + .1 * fine), beach * uOut);
           diffuseColor.rgb = c;`,
-        bump: 'float rip = sin(dot(vWP.xz, vec2(.8, .6)) * 9. + fbm(vWP.xz * .6) * 6.); hgt = vn(vWP.xz * 22.) * .004 + fbm(vWP.xz * 2.5) * .02 + rip * .0025;' });
+        normal: 'vec3 tn = texture2D(uTexN, vWP.xz * .4).xyz * 2. - 1.; normal = normalize((viewMatrix * vec4(normalize(vec3(tn.x, tn.z, -tn.y) * vec3(1.2, 1., 1.2)), 0.)).xyz);' });
     } else if (kind === 'grass') {
       m = std('#ffffff', 0.95);
-      patch(m, { kind, U, uniforms: { uA: { value: lin('#4f7d2c') }, uB: { value: lin('#86a64a') } }, head: 'uniform vec3 uA, uB;',
+      patch(m, { kind, U, uniforms: { uA: { value: lin('#5c9534') }, uB: { value: lin('#97c052') } }, head: 'uniform vec3 uA, uB;',
         color: `float n = fbm(vWP.xz * .6), f = vn(vWP.xz * 40.), g = vn(vWP.xz * 9.);
-          diffuseColor.rgb = mix(uA, uB, smoothstep(.3, .75, n * .7 + g * .3)) * (.8 + .35 * f);`,
+          diffuseColor.rgb = mix(uA, uB, smoothstep(.3, .75, n * .7 + g * .3)) * (.88 + .2 * f);`,
         bump: 'hgt = vn(vWP.xz * 40.) * .01 + vn(vWP.xz * 9.) * .01;' });
     } else if (kind === 'water') {
       m = new THREE.MeshPhysicalMaterial({ color: '#2cb6bf', roughness: 0.04, metalness: 0, envMap: env, envMapIntensity: 1.25, clearcoat: 0.4, clearcoatRoughness: 0.05 });
@@ -461,11 +468,11 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   // grama em folhas no pátio (aparece no paisagismo)
   let blades = null;
   {
-    const NB = phone ? 9000 : 32000;
+    const NB = phone ? 9000 : 60000;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute([-0.012, 0, 0, 0.012, 0, 0, 0.0, 1, 0.004], 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0.3, 1, 0, 0.3, 1, 0, 0.3, 1], 3));
-    const mat = new THREE.MeshStandardMaterial({ color: '#6f9a3c', roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({ color: '#86b24a', roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
     const Ub = { uGrow: { value: 0 } };
     mat.customProgramCacheKey = () => 'hc-blade';
     mat.onBeforeCompile = (s) => {
@@ -473,7 +480,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
       s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform float uGrow; varying float vH;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n vH = position.y; transformed.y *= uGrow;');
       s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vH;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= mix(.45, 1.15, vH);');
+        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= mix(.7, 1.15, vH);');
     };
     const im = new THREE.InstancedMesh(g, mat, NB);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
@@ -485,7 +492,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
       e.set((r() - 0.5) * 0.5, r() * 6.28, (r() - 0.5) * 0.5); q.setFromEuler(e);
       const h = 0.05 + r() * 0.07;
       m4.compose(V(x, 0.0, z), q, V(1 + r(), h, 1)); im.setMatrixAt(n, m4);
-      im.setColorAt(n, col.setHSL(0.24 + r() * 0.05, 0.45 + r() * 0.2, 0.32 + r() * 0.16)); n++;
+      im.setColorAt(n, col.setHSL(0.23 + r() * 0.05, 0.42 + r() * 0.18, 0.42 + r() * 0.16)); n++;
     }
     im.receiveShadow = true; im.frustumCulled = false;
     im.userData = { stage: 6, blades: true, U: Ub };

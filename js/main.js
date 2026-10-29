@@ -68,11 +68,12 @@ const ENV = bakeEnv();
 // ---------------------------------------------------------------- texturas CC0 e o mundo
 const tl = new THREE.TextureLoader();
 const tex = async (u, srgb) => { const t = await tl.loadAsync(u); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
-const [plaster, plasterR, oak] = await Promise.all([
-  tex('assets/textures/plastered_wall_diff_1k.jpg', true), tex('assets/textures/plastered_wall_rough_1k.jpg', false), tex('assets/textures/white_oak_veneer_diff_1k.jpg', true),
-]);
+// texturas CC0 do Poly Haven: reboco (white_stucco), madeira (dark_wood), cimento queimado (smooth_concrete_floor), palha (thatch_roof_angled), areia (coast_sand_01)
+const TX = ['white_stucco', 'dark_wood', 'smooth_concrete_floor', 'thatch_roof_angled', 'coast_sand_01'];
+const loaded = await Promise.all(TX.flatMap((n) => [tex(`assets/textures/${n}_diff_1k.jpg`, true), tex(`assets/textures/${n}_nor_gl_1k.jpg`, false)]));
 prog(0.1);
-const T = { plaster, plasterR, oak, time: { value: 0 } };
+const [stucco, stuccoN, wood, woodN, conc, concN, thatch, thatchN, sand, sandN] = loaded;
+const T = { stucco, stuccoN, wood, woodN, conc, concN, thatch, thatchN, sand, sandN, time: { value: 0 } };
 const world = await buildWorld({ url: 'referencia/modelo/hotel.glb', T, env: ENV, phone: PHONE, onProgress: (p) => prog(0.1 + p * 0.75) });
 prog(0.88);
 const scene = new THREE.Scene();
