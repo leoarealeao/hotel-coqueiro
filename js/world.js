@@ -18,6 +18,8 @@ const NOISE = `
   float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
   float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
     return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+  // detalhe que some com a distância: 1 de perto, 0 quando um pixel cobre mais que 'w' metros
+  float near(float w){ return 1. - smoothstep(w * .4, w, length(fwidth(vWP))); }
   float fbm(vec2 p){ float s = 0., a = .5; mat2 m = mat2(1.6, 1.2, -1.2, 1.6); for (int i = 0; i < 5; i++){ s += a * vn(p); p = m * p; a *= .5; } return s; }
 `;
 // relevo: uma altura procedural (metros) vira normal pelas derivadas de tela (como o bumpMap do three)
@@ -39,14 +41,16 @@ function patch(mat, o) {
     Object.assign(s.uniforms, o.uniforms || {});
     if (U) Object.assign(s.uniforms, U);
     s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-    let head = 'varying vec3 vWP; varying vec3 vWN;\n' + NOISE + BUMP;
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN; attribute float aSeed; attribute vec3 aAxis; varying float vSeed; varying vec3 vAx;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vSeed = aSeed; vAx = mat3(modelMatrix) * aAxis;');
+    let head = 'varying vec3 vWP; varying vec3 vWN; varying float vSeed; varying vec3 vAx;\n' + NOISE + BUMP;
     if (U) head += 'uniform float uCut, uBand; uniform vec3 uAxis;\n';
     head += o.head || '';
     s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\n' + head);
     if (U) s.fragmentShader = s.fragmentShader.replace('void main() {', 'void main() {\n  float cutD = uCut - dot(vWP, uAxis); if (cutD < 0.) discard;');
     if (o.color) s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + o.color);
+    // faces voltadas para baixo (forros, beirais, sob bancadas) escurecem: luz que vem do céu não chega ali
+    if (o.cavity) s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  { float dn = -(gl_FrontFacing ? vWN.y : -vWN.y); diffuseColor.rgb *= 1. - ' + o.cavity.toFixed(2) + ' * smoothstep(.2, .95, dn); }');
     if (o.normal || o.bump) s.fragmentShader = s.fragmentShader.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + (o.normal || '') +
       (o.bump ? `\n  { float hgt = 0.; ${o.bump}\n  normal = bumpN(normal, -vViewPosition, hgt); }` : ''));
     if (o.rough) s.fragmentShader = s.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n' + o.rough);
@@ -66,6 +70,16 @@ function depthPatch(U) {
   return m;
 }
 
+// identidade por peça (como no nagare): semente de tom e eixo maior da peça, por vértice
+let seedN = 0;
+function pieceIds(g, bb) {
+  const n = g.attributes.position.count, d = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+  const i = d.indexOf(Math.max(...d)), ax = [0, 0, 0]; ax[i] = 1;
+  const s = (Math.sin(++seedN * 12.9898) * 43758.5453) % 1, sd = new Float32Array(n).fill(Math.abs(s)), aa = new Float32Array(n * 3);
+  for (let k = 0; k < n; k++) aa.set(ax, k * 3);
+  g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 1)); g.setAttribute('aAxis', new THREE.BufferAttribute(aa, 3));
+}
+
 // triplanar: cor e normal (mistura "whiteout"); W = madeira, com o veio na vertical nas faces laterais
 const TRI = `
   vec3 triB(){ vec3 b = pow(abs(vWN), vec3(4.)); return b / (b.x + b.y + b.z); }
@@ -83,7 +97,15 @@ const TRI = `
     return wn((texture2D(t, vec2(vWP.y * .35, vWP.z) * sc).xyz * 2. - 1.).yxz, texture2D(t, vWP.xz * sc).xyz * 2. - 1., (texture2D(t, vec2(vWP.y * .35, vWP.x) * sc).xyz * 2. - 1.).yxz, k); }
   // normal de mundo -> normal de vista, respeitando a face (materiais de face dupla)
   vec3 toView(vec3 nW, vec3 nGeo){ vec3 gW = (vec4(nGeo, 0.) * viewMatrix).xyz; if (dot(gW, vWN) < 0.) nW = -nW; return normalize((viewMatrix * vec4(nW, 0.)).xyz); }
-  float lum(vec3 c){ return dot(c, vec3(.299, .587, .114)); }`;
+  float lum(vec3 c){ return dot(c, vec3(.299, .587, .114)); }
+  // madeira por peça: o veio corre ao longo do eixo da peça (aAxis), cada peça com o seu deslocamento e tom
+  vec3 pcA(){ vec3 a = vAx; return dot(a, a) < .25 ? vec3(0., 1., 0.) : normalize(a); }
+  vec3 pcB(vec3 n, vec3 a){ vec3 b = cross(n, a); if (dot(b, b) < .09) b = cross(n, abs(n.y) < .9 ? vec3(0., 1., 0.) : vec3(1., 0., 0.)); return normalize(b); }
+  vec2 pcUV(float sc){ vec3 n = normalize(vWN), a = pcA(), b = pcB(n, a); return vec2(dot(vWP, a) * .35, dot(vWP, b)) * sc + vSeed * vec2(7.31, 3.17); }
+  vec3 pcN(sampler2D t, float sc, float k){ vec3 n = normalize(vWN), a = pcA(), b = pcB(n, a);
+    vec3 tn = texture2D(t, pcUV(sc)).xyz * 2. - 1.; return normalize(a * tn.x * k + b * tn.y * k + n * tn.z); }
+  // tom e topo por peça: cada peça um pouco diferente, topos (corte transversal) mais escuros
+  float pcTone(){ vec3 n = normalize(vWN); return (.84 + .32 * vSeed) * mix(1., .68, smoothstep(.6, .9, abs(dot(n, pcA())))); }`;
 
 // -------------------------------------------------------------------------------------------- materiais
 export function makeMaterials(T, env) {
@@ -95,21 +117,21 @@ export function makeMaterials(T, env) {
       m = std(hex, 0.9);
       patch(m, { kind, U, uniforms: { uTex: { value: T.stucco }, uTexN: { value: T.stuccoN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
         color: 'vec3 tx = triC(uTex, .55); diffuseColor.rgb *= mix(vec3(1.), tx / vec3(.6837, .6511, .6285), .7); diffuseColor.rgb *= .95 + .08 * fbm(vWP.xz * .35 + vWP.y * .3);',
-        normal: 'normal = toView(triN(uTexN, .55, 1.4), normal);' });
+        normal: 'normal = toView(triN(uTexN, .55, 1.4), normal);', cavity: .35 });
     } else if (kind === 'wood') {
       m = std(hex, 0.55);
       patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
-        color: 'vec3 tx = triCW(uTex, .7); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .25, 2.5), .8) * .5;',
-        normal: 'normal = toView(triNW(uTexN, .7, 1.), normal);' });
+        color: 'vec3 tx = texture2D(uTex, pcUV(.7)).rgb; diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .25, 2.5), .8 * (.35 + .65 * near(.03))) * .5 * pcTone();',
+        normal: 'normal = toView(pcN(uTexN, .7, 1.), normal);', cavity: .3 });
     } else if (kind === 'cement') {
       m = std('#b6b2aa', 0.5);
       patch(m, { kind, U, uniforms: { uTex: { value: T.conc }, uTexN: { value: T.concN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
         color: 'vec3 tx = triC(uTex, .35); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0577, .3, 2.2), .6) * (.9 + .15 * fbm(vWP.xz * .7));',
         rough: 'roughnessFactor = .35 + .2 * clamp(lum(triC(uTex, .35)) / .0577, 0., 2.);',
-        normal: 'normal = toView(triN(uTexN, .35, .7), normal);' });
+        normal: 'normal = toView(triN(uTexN, .35, .7), normal);', cavity: .3 });
     } else if (kind === 'stone') {
       m = std(hex, 0.8);
-      patch(m, { kind, U, color: 'float n = fbm(vWP.xz * 2.5); diffuseColor.rgb *= .82 + .3 * n;', bump: 'hgt = fbm(vWP.xz * 9. + vWP.y * 9.) * .004;' });
+      patch(m, { kind, U, color: 'float n = fbm(vWP.xz * 2.5); diffuseColor.rgb *= .82 + .3 * n;', bump: 'hgt = fbm(vWP.xz * 9. + vWP.y * 9.) * .004;', cavity: .3 });
     } else if (kind === 'thatch') {
       m = std('#ffffff', 1.0, { envMapIntensity: 0.35 });
       patch(m, { kind, U, uniforms: { uTex: { value: T.thatch }, uTexN: { value: T.thatchN }, uTone: { value: lin('#9c7c4a') } }, head: 'uniform sampler2D uTex, uTexN; uniform vec3 uTone;' + TRI,
@@ -117,8 +139,9 @@ export function makeMaterials(T, env) {
           vec2 uv = vec2(dot(vWP, t), dot(vWP, sl)) * 1.1;
           vec3 tx = texture2D(uTex, uv).rgb;
           float row = fract(dot(vWP, sl) * 2.6 + vn(vec2(dot(vWP, t) * 1.5, 0.)) * .06);
-          vec3 c = uTone * pow(clamp(lum(tx) / .0871, 0., 3.), .85) * (.88 + .22 * fbm(vWP.xz * .3));
-          c *= mix(1., .62, smoothstep(.86, .99, row));
+          float dt = near(.06);
+          vec3 c = uTone * mix(1., pow(clamp(lum(tx) / .0871, 0., 3.), .85), .4 + .6 * dt) * (.88 + .22 * fbm(vWP.xz * .3));
+          c *= mix(1., .62, smoothstep(.86, .99, row) * (1. - smoothstep(.15, .45, fwidth(dot(vWP, sl) * 2.6))));
           diffuseColor.rgb = c;`,
         normal: `{ vec3 n = normalize(vWN); if (n.y < 0.) n = -n; vec3 t = normalize(cross(n, vec3(0., 1., 0.)) + vec3(1e-4)); vec3 sl = cross(t, n);
           vec2 uv = vec2(dot(vWP, t), dot(vWP, sl)) * 1.1;
@@ -161,7 +184,7 @@ export function makeMaterials(T, env) {
         color: `vec2 uv = hjUV(); vec2 cell = floor(uv / .2); float r1 = h21(cell * 1.37 + 3.1), r2 = h21(cell * 2.11 + 7.7);
           vec3 c = mix(uA, uB, r1); c = mix(c, uC, smoothstep(.75, 1., r2) * .8);
           c *= .82 + .3 * fbm(uv * 9. + r1 * 10.);
-          c = mix(c, vec3(.28, .33, .3), hjGrout(uv) * .75);
+          c = mix(c, vec3(.28, .33, .3), hjGrout(uv) * .75 * near(.02));
           float under = smoothstep(.0, .06, -vWP.y), dd = clamp(-vWP.y / 1.4, 0., 1.);
           vec3 absorb = mix(vec3(1.), vec3(.5, .95, .88), under) * (1. - .18 * dd);
           float ca = pow(1. - abs(fbm(vWP.xz * 2.6 + uTime * .18) * 2. - 1.), 7.) + pow(1. - abs(fbm(vWP.xz * 3.7 - uTime * .14 + 4.) * 2. - 1.), 9.);
@@ -188,8 +211,8 @@ export function makeMaterials(T, env) {
       // folhas de porta: freijó escuro com veio vertical, almofadas rebaixadas e cantos sombreados
       m = std('#7a5236', 0.5);
       patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
-        color: 'vec3 tx = triCW(uTex, .9); diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .3, 2.2), .7) * .75;',
-        normal: 'normal = toView(triNW(uTexN, .9, 1.), normal);' });
+        color: 'vec3 tx = texture2D(uTex, pcUV(.9)).rgb; diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .3, 2.2), .7 * (.35 + .65 * near(.03))) * .75 * pcTone();',
+        normal: 'normal = toView(pcN(uTexN, .9, 1.), normal);', cavity: .3 });
     } else if (kind === 'inox') {
       m = std('#c9ccd0', 0.32, { metalness: 0.75, envMapIntensity: 1.0 });
       patch(m, { kind, U, rough: 'roughnessFactor = .28 + .1 * vn(vec2(vWP.y * 400., (vWP.x + vWP.z) * 4.));' });
@@ -360,6 +383,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     if (!buckets.has(key)) buckets.set(key, { k, c, geos: [], mat: o.material, inkOnly });
     // atributos uniformes para fundir
     for (const a of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(a)) g.deleteAttribute(a);
+    pieceIds(g, bb);
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     if (!g.index) { const n = g.attributes.position.count, idx = new Uint32Array(n); for (let i = 0; i < n; i++) idx[i] = i; g.setIndex(new THREE.BufferAttribute(idx, 1)); }
     if (o.matrixWorld.determinant() < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } }
