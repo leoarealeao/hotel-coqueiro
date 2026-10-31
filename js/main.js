@@ -11,6 +11,10 @@ import { loadProps } from './props.js';
 
 const Q = new URLSearchParams(location.search);
 const STILL = Q.has('still') || Q.has('offline'), OFFLINE = Q.has('offline');
+// ?cam=cozinha fixa uma das câmeras de referencia/modelo/cameras.json; ?cam=x,y,z,ax,ay,az,fov, uma câmera livre (para conferir móveis; use com ?v=17)
+const camQ = Q.get('cam'), camN = camQ?.split(',').map(Number);
+const CAM = !camQ ? null : camN.length === 7 ? [camQ, camN.slice(0, 3), camN.slice(3, 6), camN[6]]
+  : (await (await fetch('referencia/modelo/cameras.json')).json()).find((c) => c[0] === camQ);
 const PHONE = Math.min(innerWidth, innerHeight) <= 700;
 const DPR = Math.min(+(Q.get('dpr') || devicePixelRatio || 1), PHONE ? 2 : 1.5);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -254,6 +258,7 @@ function render(now, forceV) {
   const kp = KP(REST);
   if (sv < Z.lens[0]) k = c > 0 ? lerpK(kp, K1, ease(c), { e: ease(sm(0.05, 0.9, c)) }) : kp;
   else if (sv < Z.build[0]) k = lerpK(K1, KA, l, { f: sm(0, 0.7, l), e: sm(0.15, 1, l), T: sm(0.1, 1, l), h: sm(0.1, 1, l) });
+  else if (CAM) k = toK(V(...CAM[1]), V(...CAM[2]), CAM[3]);
   else { const w = pathAt(sv); k = toK(w.P, w.L, w.fov); }
   buildAt(world, month); lightFor(month);
 

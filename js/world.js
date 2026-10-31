@@ -72,9 +72,9 @@ function depthPatch(U) {
 
 // identidade por peça (como no nagare): semente de tom e eixo maior da peça, por vértice
 let seedN = 0;
-function pieceIds(g, bb) {
+export function pieceIds(g, bb, axis) { // axis: 0/1/2 força o eixo do veio (1 = vertical); sem ele, o maior lado da peça
   const n = g.attributes.position.count, d = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
-  const i = d.indexOf(Math.max(...d)), ax = [0, 0, 0]; ax[i] = 1;
+  const i = axis ?? d.indexOf(Math.max(...d)), ax = [0, 0, 0]; ax[i] = 1;
   const s = (Math.sin(++seedN * 12.9898) * 43758.5453) % 1, sd = new Float32Array(n).fill(Math.abs(s)), aa = new Float32Array(n * 3);
   for (let k = 0; k < n; k++) aa.set(ax, k * 3);
   g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 1)); g.setAttribute('aAxis', new THREE.BufferAttribute(aa, 3));
@@ -277,7 +277,9 @@ const ZONES = [
   [26.85, 27.65, 0, 1.7, 15.75, 16.55], [21.2, 22.0, 0, 1.7, 21.05, 21.85], [23.95, 24.75, 0, 1.7, 20.5, 21.3], // vasos
   [41.75, 42.75, 3.0, 4.2, 6.6, 8.65],      // apto 10: sofá
   [39.55, 41.65, 3.0, 3.95, 4.75, 6.6],     // apto 10: mesa e banquetas
-  [42.0, 42.75, 3.0, 4.0, 4.75, 6.55],      // apto 10: bancada, pia e cooktop (js/interior.js)
+  [42.0, 42.75, 3.0, 5.3, 4.75, 6.55],      // apto 10: bancada, pia, cooktop e aéreo (assets/models/cozinha)
+  [42.0, 42.75, 3.0, 5.0, 4.05, 4.8],       // apto 10: geladeira
+  [39.4, 39.8, 3.0, 4.9, 6.7, 8.5],         // apto 10: TV e rack (assets/models/sala)
   [36.05, 38.3, 3.0, 4.05, 5.45, 8.35],     // apto 10: cama do quarto 1 e criados
 ];
 function zoned(k, bb) {

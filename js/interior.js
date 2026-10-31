@@ -1,4 +1,4 @@
-// Peças feitas por código onde não há modelo pronto no estilo: bancada da cozinha, cama do quarto e batentes do apto 10.
+// Peças feitas por código onde não há modelo pronto no estilo: cama do quarto e batentes do apto 10 (a bancada da cozinha virou assets/models/cozinha, feita por blender/cozinha.py).
 // Coordenadas do GLB (apto 10 = módulo x 36–42,75 do bloco A, piso em y 3,0).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -10,14 +10,6 @@ function stripes() {
   [[18, 26, '#55687a'], [34, 38, '#55687a'], [60, 64, '#9aa7b1'], [190, 194, '#9aa7b1'], [216, 220, '#55687a'], [228, 236, '#55687a']].forEach(([a, b, col]) => { g.fillStyle = col; g.fillRect(a, 0, b - a, 8); });
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-function cooktop() {
-  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
-  g.fillStyle = '#0d0d0e'; g.fillRect(0, 0, 256, 256);
-  g.strokeStyle = 'rgba(200,200,200,.55)'; g.lineWidth = 3;
-  [[72, 72, 44], [184, 72, 34], [72, 184, 34], [184, 184, 44]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, r * 0.55, 0, 7); g.stroke(); });
-  g.fillStyle = 'rgba(220,220,220,.6)'; g.fillRect(100, 236, 56, 6);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
 
 export function buildInterior(world, env) {
   const G = new THREE.Group();
@@ -26,9 +18,9 @@ export function buildInterior(world, env) {
   const std = (o) => new THREE.MeshStandardMaterial({ metalness: 0, envMap: env, envMapIntensity: 0.6, ...o });
   const M = {
     oak: mk('wood', '#b98a5a'), dark: mk('wood', '#5a3a24'), frame: mk('wood', '#4a2e1c'),
-    granite: std({ color: '#262628', roughness: 0.28 }), inox: mk('inox', '#c9ccd0'), black: std({ color: '#141414', roughness: 0.4 }),
+    black: std({ color: '#141414', roughness: 0.4 }),
     linen: mk('fabric', '#ece6da'), white: mk('fabric', '#f5f2eb'), sheet: mk('fabric', '#f1ede4'), accent: mk('fabric', '#8a9aa6'),
-    throw: std({ map: stripes(), roughness: 0.95 }), glass: std({ map: cooktop(), roughness: 0.12, envMapIntensity: 1.0 }),
+    throw: std({ map: stripes(), roughness: 0.95 }),
     shade: std({ color: '#f3e9d6', emissive: '#ffcf8f', emissiveIntensity: 0.9, roughness: 0.8 }), cer: std({ color: '#d9cbb4', roughness: 0.5 }),
   };
   const box = (w, h, d, x, y, z, m, rr = 0) => {
@@ -36,31 +28,6 @@ export function buildInterior(world, env) {
     const o = new THREE.Mesh(g, m); o.position.set(x, y + h / 2, z); o.castShadow = o.receiveShadow = true; G.add(o); return o;
   };
   const cyl = (r, h, x, y, z, m, r2 = r, seg = 24) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r2, h, seg), m); o.position.set(x, y + h / 2, z); o.castShadow = o.receiveShadow = true; G.add(o); return o; };
-
-  // ---- bancada: gabinete com 3 portas, tampo de granito, pia inox com torneira e cooktop (parede x = 42,69, frente para -x)
-  {
-    const z0 = 4.8, z1 = 6.5, xf = 42.12, xb = 42.69;
-    box(xb - xf - 0.05, 0.1, z1 - z0 - 0.02, (xf + xb) / 2 + 0.03, Y0, (z0 + z1) / 2, M.black);                  // rodapé recuado
-    box(xb - xf, 0.74, z1 - z0, (xf + xb) / 2, Y0 + 0.1, (z0 + z1) / 2, M.oak);                                  // caixa
-    const n = 3, w = (z1 - z0) / n;
-    for (let i = 0; i < n; i++) {
-      const zc = z0 + w * (i + 0.5);
-      box(0.02, 0.7, w - 0.012, xf - 0.01, Y0 + 0.12, zc, M.oak, 0.004);                                         // portas com fresta
-      box(0.02, 0.016, 0.16, xf - 0.032, Y0 + 0.74, zc, M.black);                                               // puxador
-    }
-    box(xb - xf + 0.04, 0.03, z1 - z0 + 0.04, (xf + xb) / 2 - 0.02, Y0 + 0.84, (z0 + z1) / 2, M.granite, 0.005); // tampo
-    // pia: cuba inox embutida em z 5,25
-    const zs = 5.25;
-    box(0.4, 0.006, 0.5, 42.4, Y0 + 0.872, zs, M.inox);
-    box(0.34, 0.004, 0.44, 42.4, Y0 + 0.874, zs, M.black);                                                       // fundo da cuba (sombra)
-    cyl(0.018, 0.02, 42.4, Y0 + 0.874, zs, M.inox);
-    const fx = 42.62; cyl(0.022, 0.3, fx, Y0 + 0.87, zs, M.inox);                                                // torneira
-    const arm = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 8, 20, Math.PI), M.inox);
-    arm.position.set(fx - 0.09, Y0 + 1.17, zs); arm.rotation.y = Math.PI / 2; arm.castShadow = true; G.add(arm);
-    box(0.06, 0.01, 0.02, fx + 0.02, Y0 + 1.06, zs + 0.03, M.inox);
-    // cooktop de vidro em z 6,03
-    box(0.5, 0.008, 0.56, 42.4, Y0 + 0.87, 6.03, M.glass);
-  }
 
   // ---- quarto 1: cama de casal com cabeceira em painel de madeira e criados flutuantes (cabeceira na parede x = 36,06)
   {
@@ -84,8 +51,8 @@ export function buildInterior(world, env) {
     box(0.9, 0.012, 1.4, xw + 2.55, Y0, zc, std({ color: '#b9a37c', roughness: 1 }), 0.005);                     // tapete de sisal
   }
 
-  // ---- almofadas de linho nos bancos de madeira (chinese_sofa): assento e encosto. [x do centro, y do assento, z, sentido (+1 = frente para +x), escala]
-  [[22.05, 0.1, 17.5, 1, 1], [42.3, 3.0, 7.6, -1, 1.9 / 2.29]].forEach(([x, y, z, f, k]) => {
+  // ---- almofadas de linho no banco de madeira da recepção (chinese_sofa): assento e encosto. [x do centro, y do assento, z, sentido (+1 = frente para +x), escala]
+  [[22.05, 0.1, 17.5, 1, 1]].forEach(([x, y, z, f, k]) => {
     const L = 1.95 * k, sy = y + 0.44 * k;
     box(0.55 * k, 0.1, L, x + f * 0.06 * k, sy, z, M.linen, 0.04);
     [-1, 1].forEach((sg) => { const c = box(0.14, 0.4 * k, L / 2 - 0.04, x - f * 0.26 * k, sy + 0.08, z + sg * L / 4, M.linen, 0.06); c.rotation.z = f * 0.18; });
