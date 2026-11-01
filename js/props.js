@@ -31,16 +31,28 @@ const PROPS = [
   ['cadeira', 40.211, 3.0, 6.139, 135],
   ['cadeira', 40.211, 3.0, 5.361, 45],
   ['cadeira', 40.989, 3.0, 5.361, -45],   // cadeiras nas diagonais, de frente para a mesa
+  // quarto 1 (x 36,06–39,3 × z 4,95–8,6): cabeceira na parede x = 36,06; armário do GLB em z 5,03–5,58
+  ['cama', 36.06, 3.0, 6.95, 90],
+  ['criado', 36.06, 3.0, 5.81, 90],
+  ['criado', 36.06, 3.0, 8.09, 90],
+  ['tapete', 38.45, 3.0, 6.95, 0],
+  // portas: origem no meio do vão e da parede, maçaneta do lado +X do modelo (z maior / x maior)
+  ['porta_90', 42.75, 3.0, 3.4, -90],                // entrada, pelo patamar
+  ['porta_80', 39.375, 3.0, 3.5, -90],               // quarto 2
+  ['porta_80', 39.375, 3.0, 5.55, -90],              // quarto 1
+  ['porta_80', 40.0, 3.0, 2.8, 0],                   // banho
 ];
 // modelos próprios: madeira, inox e tecidos ganham os shaders do site; peça marcada com veio 'v' (extras do Blender) tem o veio na vertical
 const OWN = {
   cozinha: 'cozinha/cozinha.glb', aereo: 'cozinha/aereo.glb', geladeira: 'cozinha/geladeira.glb',
   sofa: 'sala/sofa.glb', mesa: 'sala/mesa.glb', cadeira: 'sala/cadeira.glb', rack: 'sala/rack.glb', tv: 'sala/tv.glb',
+  cama: 'quarto/cama.glb', criado: 'quarto/criado.glb', tapete: 'quarto/tapete.glb', porta_80: 'porta/porta_80.glb', porta_90: 'porta/porta_90.glb',
   quadro_sol: 'sala/quadro_sol.glb', quadro_folhas: 'sala/quadro_folhas.glb', quadro_mare: 'sala/quadro_mare.glb', quadro_blocos: 'sala/quadro_blocos.glb',
 };
 const SWAP = {
   cz_madeira: ['wood', '#b98a5a'], md_escura: ['wood', '#5a3a24'], cz_inox: ['inox'], cz_cuba: ['inox'],
   tc_linho: ['fabric', '#e6dfd0'], tc_azul: ['fabric', '#7f93a3'], tc_terracota: ['fabric', '#b9714c'], tc_palha: ['fabric', '#c9a873'], pp_branco: ['fabric', '#f3efe6'],
+  tc_sisal: ['fabric', '#b9a37c'], pt_folha: ['door'], lp_cupula: ['glow'],
 };
 // tecido cru: as almofadas da poltrona perdem o couro preto; o estampado floral do daybed vira linho
 const LINEN = new THREE.Color('#d8cdb8');

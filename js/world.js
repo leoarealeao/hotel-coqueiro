@@ -280,7 +280,8 @@ const ZONES = [
   [42.0, 42.75, 3.0, 5.3, 4.75, 6.55],      // apto 10: bancada, pia, cooktop e aéreo (assets/models/cozinha)
   [42.0, 42.75, 3.0, 5.0, 4.05, 4.8],       // apto 10: geladeira
   [39.4, 39.8, 3.0, 4.9, 6.7, 8.5],         // apto 10: TV e rack (assets/models/sala)
-  [36.05, 38.3, 3.0, 4.05, 5.45, 8.35],     // apto 10: cama do quarto 1 e criados
+  [36.05, 38.3, 3.0, 4.05, 5.45, 8.35],     // apto 10: cama do quarto 1 e criados (assets/models/quarto)
+  [39.3, 39.45, 3.0, 5.0, 3.1, 3.9], [39.3, 39.45, 3.0, 5.0, 5.15, 5.95], [42.7, 42.8, 3.0, 5.0, 2.95, 3.85], [39.6, 40.4, 3.0, 5.0, 2.75, 2.85], // apto 10: folhas das portas (assets/models/porta)
 ];
 function zoned(k, bb) {
   if (STRUCT.has(k)) return false;
