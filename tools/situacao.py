@@ -52,7 +52,9 @@ def pin(p, txt, sub, a, b, side=1, main=False):
     c = 'pin main' if main else 'pin'
     return (f'<g class="mk up {c}" data-x="{x:.1f}" data-y="{y:.1f}" data-a="{a}" data-b="{b}"><circle r="{11 if main else 8}" class="halo"/><circle r="{5.5 if main else 4}" class="dot"/>'
             f'<rect x="{x0:.0f}" y="-17" width="{w:.0f}" height="{34 if sub else 22}" class="tag"/><text x="{x0 + 9:.0f}" y="-2" class="t1">{txt}</text>' + (f'<text x="{x0 + 9:.0f}" y="11" class="t2">{sub}</text>' if sub else '') + '</g>')
-s += [pin((-282, 102), 'Aimberê Eco Resort', 'HOTEL', -1, .62, -1), pin((206, 309), 'Alô Brasil', 'RESTAURANTE NA PRAIA', -1, .62),
+# Aimberê: terreno grande, marcador no meio entre a R. Francisco Gomes e a faixa de areia. Praça: coordenada do Google Maps passada pelo Leonardo (-2.906498, -41.574703)
+s += [pin((-250, 62), 'Aimberê Eco Resort', 'HOTEL', -1, .62, -1), pin((206, 309), 'Alô Brasil', 'RESTAURANTE NA PRAIA', -1, .62, -1),
+      pin((360.5, 292.5), 'Praça do Coqueiro', 'PEDRO JOSÉ RODRIGUES', -1, .62),
       pin((-277.7, -314.4), 'Sorveteria Araújo', 'AV. ANTONIETA REIS VELOSO', -1, .62, -1), pin(CC, 'o terreno', 'EM L · 1.633 m²', -1, .8, 1, True)]
 s.append('</svg>')
 svg = '\n'.join(s)
