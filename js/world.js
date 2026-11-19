@@ -413,7 +413,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     if (k !== 70 && (bb.max.x <= 17.6 || bb.min.x >= 52.15)) { g.translate(FX, 0, 0); g.computeBoundingBox(); }
     const c = classify(k, bb, o.material.color && o.material.color.getHexString());
     if (!c) return;
-    const inkOnly = zoned(k, bb);
+    const inkOnly = zoned(k, bb) || (k >= 7 && k <= 14); // carros em caixa do GLB: só no nanquim; no render entram os Jeeps (js/props.js)
     const key = `${k}|${c.stage}|${c.kind}|${c.mode}${inkOnly ? '|ink' : ''}`;
     if (!buckets.has(key)) buckets.set(key, { k, c, geos: [], mat: o.material, inkOnly });
     // atributos uniformes para fundir

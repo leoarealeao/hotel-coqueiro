@@ -43,6 +43,11 @@ const PROPS = [
   ['porta_80', 39.375, 3.0, 5.55, -90],              // quarto 1
   ['porta_80', 40.0, 3.0, 2.8, 0],                   // banho
 ];
+// [x, z, giro, cor da lataria]: as seis vagas do GLB, já com o avanço de 3 m da frente do lote; fila do muro de frente para o muro
+const CARS = [
+  [5.5, 1.25, -90, '#8f2b24'], [5.5, 6.25, -90, '#e9e9e6'], [5.5, 11.25, -90, '#2f4f7a'],
+  [16.5, 3.75, 90, '#b9bcbe'], [16.5, 16.75, 90, '#2b2d30'], [16.5, 21.75, 90, '#6f7477'],
+];
 // modelos próprios: madeira, inox e tecidos ganham os shaders do site; peça marcada com veio 'v' (extras do Blender) tem o veio na vertical
 const OWN = {
   cozinha: 'cozinha/cozinha.glb', aereo: 'cozinha/aereo.glb', geladeira: 'cozinha/geladeira.glb',
@@ -89,6 +94,21 @@ export async function loadProps(world, env, onDone) {
     o.position.set(x - (bb.min.x + bb.max.x) / 2, y - bb.min.y, z - (bb.min.z + bb.max.z) / 2);
     group.add(o);
   }));
+  // carros do estacionamento: Jeep Compass (modelo enviado pelo Leonardo, reduzido em blender/jeep.py), um por vaga do GLB, cada um de uma cor
+  try {
+    const jeep = await loader.loadAsync('assets/models/jeep/jeep.glb');
+    CARS.forEach(([x, z, yaw, hex]) => {
+      const o = jeep.scene.clone(true);
+      o.traverse((m) => {
+        if (!m.isMesh) return;
+        m.castShadow = m.receiveShadow = true; m.userData = { prop: true };
+        m.material = m.material.clone(); m.material.envMap = env; m.material.envMapIntensity = 0.9;
+        if (m.material.name === 'jp_lataria') { m.material.color.set(hex); m.material.metalness = 0.55; m.material.roughness = 0.28; m.material.envMapIntensity = 1.2; }
+        if (m.material.transparent) { m.material.depthWrite = false; m.renderOrder = 2; m.castShadow = false; }
+      });
+      o.position.set(x, 0.03, z); o.rotation.y = yaw * DEG; group.add(o);
+    });
+  } catch (e) { console.warn('carro não carregou', e); }
   if (onDone) onDone();
   return group;
 }
