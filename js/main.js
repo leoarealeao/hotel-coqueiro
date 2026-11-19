@@ -245,15 +245,19 @@ document.body.classList.add('ready');
 
 // ---------------------------------------------------------------- scroll
 const track = $('#track');
-track.style.height = (Z.total + 1) * 100 + 'vh';
-if (Q.has('v')) { history.scrollRestoration = 'manual'; scrollTo(0, +Q.get('v') * innerHeight); }
-let sv = scrollY / innerHeight, last = performance.now(), lastKey = '';
+// a prancha de situação (A-00) ocupa a primeira tela de rolagem; o roteiro (Z, KEYS) começa depois dela
+const SIT = 1, sitEl = $('#sit');
+track.style.height = (Z.total + 1 + SIT) * 100 + 'vh';
+if (Q.has('v')) { history.scrollRestoration = 'manual'; scrollTo(0, (+Q.get('v') + SIT) * innerHeight); }
+let sv = Math.max(0, scrollY / innerHeight - SIT), last = performance.now(), lastKey = '';
 const heroT0 = performance.now() + 250;
 const reveal = (i, now) => (STILL ? 1 : clamp((now - heroT0) / 1800, 0, 1));
 
 function render(now, forceV) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  const target = forceV ?? clamp(scrollY / innerHeight, 0, Z.total);
+  const target = forceV ?? clamp(scrollY / innerHeight - SIT, 0, Z.total);
+  const raw = forceV !== undefined ? (Q.has('sit') ? 0 : SIT) : scrollY / innerHeight, so = 1 - sm(0.2, 0.85, raw);
+  sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so; sitEl.style.transform = so < 1 ? `translateY(${-(1 - so) * 6}vh)` : 'none';
   sv = forceV !== undefined || STILL ? target : sv + (target - sv) * (1 - Math.exp(-dt * 5));
   if (Math.abs(target - sv) < 1e-4) sv = target;
   T.time.value = OFFLINE ? sv * 4 : now / 1000;

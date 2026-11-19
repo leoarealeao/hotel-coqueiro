@@ -24,6 +24,15 @@
 
   /* a prancha: tudo que mergulha junto com o papel */
   #sheet { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 1; transform-origin: 0 0; pointer-events: none; will-change: transform, opacity; }
+  #sit { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 5; background: var(--paper); pointer-events: none; }
+  #sit .frame { overflow: hidden; }
+  #sitmap { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: hidden; }
+  #sitmap text { font: 600 13px/1 var(--mono); letter-spacing: .1em; fill: var(--ink); }
+  #sitmap .st { font: 600 12.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  #sitmap .lt { font: italic 600 25px/1 var(--serif); letter-spacing: 0; fill: var(--accent); }
+  #sitmap .big { font: 600 46px/1 var(--serif); letter-spacing: .01em; }
+  #sitmap .sea { font: italic 500 30px/1 var(--serif); letter-spacing: .04em; fill: rgba(28, 27, 24, .6); }
+  #sitmap .acc { fill: var(--accent); } #sitmap .dim { fill: rgba(28, 27, 24, .6); font-size: 11px; }
   .top { position: absolute; left: var(--gx); right: var(--gx); top: 26px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; border-bottom: 1.5px solid var(--ink); padding-bottom: 12px; }
   h1 { font: 600 44px/0.95 var(--serif); margin: 0; letter-spacing: -.01em; }
   h1 i { font-weight: 500; color: var(--accent); }
@@ -148,13 +157,57 @@
   </div>
   <div class="hint" id="hint"><i>&darr;</i>Role para ver a obra</div>
 </div>
+<div id="sit">
+  <div class="top">
+    <div>
+      <h1>Hotel Praia do Coqueiro <i>· onde fica</i></h1>
+      <p class="sub">Planta de situação · Praia do Coqueiro · Luís Correia, PI · prancha A-00</p>
+    </div>
+    <div class="meta">Mapa esquemático · norte para cima<br>Mar a ~200 m do terreno</div>
+  </div>
+  <figure class="planta"><div class="frame" data-num="SITUAÇÃO"><!--SIT--><svg id="sitmap" viewBox="-600 -300 1660 692" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs><pattern id="hx" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#1c1b18" stroke-width=".8" opacity=".5"/></pattern>
+<pattern id="wv" width="46" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(-40)"><path d="M0 8 q11.5 -7 23 0 t23 0" fill="none" stroke="#1c1b18" stroke-width=".7" opacity=".28"/></pattern>
+<pattern id="dt" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r=".7" fill="#1c1b18" opacity=".3"/><circle cx="6.5" cy="7" r=".6" fill="#1c1b18" opacity=".22"/></pattern></defs>
+<polygon points="-1150.6,788.3 -1105.2,733.2 -1060.5,677.4 -1010.8,627.5 -954.2,585.9 -894.0,548.7 -835.8,509.1 -783.4,462.5 -735.7,410.2 -687.5,358.5 -633.7,313.6 -573.0,277.0 -509.2,244.1 -448.6,207.3 -395.2,162.0 -347.8,109.4 -301.3,55.6 -250.3,7.3 -193.3,-33.7 -133.6,-71.6 -77.0,-113.0 -26.7,-162.2 18.8,-217.2 64.8,-271.4 117.0,-318.3 176.5,-356.3 239.6,-390.0 300.2,-426.8 354.4,-471.3 403.2,-522.1 451.9,-573.2 505.4,-618.6 564.7,-656.9 626.0,-692.7 683.5,-733.2 733.8,-782.4 778.5,-838.2 823.4,-893.8 873.9,-942.7 931.5,-983.1 992.4,-1019.5 1050.8,-1058.8 1103.4,-1105.2 1151.5,-1156.9 1200.5,-1207.7 1255.2,-1251.5 1316.3,-1287.6 1379.7,-1321.0 1379.7,-1200.0 -1500.0,-1200.0 -1500.0,788.3" fill="#cfe0dc"/><polygon points="-1150.6,788.3 -1105.2,733.2 -1060.5,677.4 -1010.8,627.5 -954.2,585.9 -894.0,548.7 -835.8,509.1 -783.4,462.5 -735.7,410.2 -687.5,358.5 -633.7,313.6 -573.0,277.0 -509.2,244.1 -448.6,207.3 -395.2,162.0 -347.8,109.4 -301.3,55.6 -250.3,7.3 -193.3,-33.7 -133.6,-71.6 -77.0,-113.0 -26.7,-162.2 18.8,-217.2 64.8,-271.4 117.0,-318.3 176.5,-356.3 239.6,-390.0 300.2,-426.8 354.4,-471.3 403.2,-522.1 451.9,-573.2 505.4,-618.6 564.7,-656.9 626.0,-692.7 683.5,-733.2 733.8,-782.4 778.5,-838.2 823.4,-893.8 873.9,-942.7 931.5,-983.1 992.4,-1019.5 1050.8,-1058.8 1103.4,-1105.2 1151.5,-1156.9 1200.5,-1207.7 1255.2,-1251.5 1316.3,-1287.6 1379.7,-1321.0 1379.7,-1200.0 -1500.0,-1200.0 -1500.0,788.3" fill="url(#wv)"/>
+<polygon points="-1150.6,788.3 -1105.2,733.2 -1060.5,677.4 -1010.8,627.5 -954.2,585.9 -894.0,548.7 -835.8,509.1 -783.4,462.5 -735.7,410.2 -687.5,358.5 -633.7,313.6 -573.0,277.0 -509.2,244.1 -448.6,207.3 -395.2,162.0 -347.8,109.4 -301.3,55.6 -250.3,7.3 -193.3,-33.7 -133.6,-71.6 -77.0,-113.0 -26.7,-162.2 18.8,-217.2 64.8,-271.4 117.0,-318.3 176.5,-356.3 239.6,-390.0 300.2,-426.8 354.4,-471.3 403.2,-522.1 451.9,-573.2 505.4,-618.6 564.7,-656.9 626.0,-692.7 683.5,-733.2 733.8,-782.4 778.5,-838.2 823.4,-893.8 873.9,-942.7 931.5,-983.1 992.4,-1019.5 1050.8,-1058.8 1103.4,-1105.2 1151.5,-1156.9 1200.5,-1207.7 1255.2,-1251.5 1316.3,-1287.6 1379.7,-1321.0 1459.7,-1224.8 1396.3,-1191.4 1335.2,-1155.3 1280.5,-1111.4 1231.5,-1060.7 1183.4,-1008.9 1130.8,-962.5 1072.4,-923.2 1011.5,-886.8 953.9,-846.4 903.4,-797.6 858.5,-741.9 813.8,-686.1 763.5,-636.9 706.0,-596.5 644.7,-560.6 585.4,-522.3 531.9,-477.0 483.2,-425.9 434.4,-375.0 380.2,-330.6 319.6,-293.8 256.5,-260.1 197.0,-222.0 144.8,-175.1 98.8,-120.9 53.3,-65.9 3.0,-16.8 -53.6,24.7 -113.3,62.5 -170.3,103.6 -221.3,151.9 -267.8,205.6 -315.2,258.3 -368.6,303.6 -429.2,340.3 -493.0,373.3 -553.7,409.9 -607.5,454.8 -655.7,506.5 -703.4,558.7 -755.8,605.3 -814.0,645.0 -874.2,682.2 -930.8,723.8 -980.5,773.6 -1025.2,829.5 -1070.6,884.5" fill="#ece2c8"/><polygon points="-1150.6,788.3 -1105.2,733.2 -1060.5,677.4 -1010.8,627.5 -954.2,585.9 -894.0,548.7 -835.8,509.1 -783.4,462.5 -735.7,410.2 -687.5,358.5 -633.7,313.6 -573.0,277.0 -509.2,244.1 -448.6,207.3 -395.2,162.0 -347.8,109.4 -301.3,55.6 -250.3,7.3 -193.3,-33.7 -133.6,-71.6 -77.0,-113.0 -26.7,-162.2 18.8,-217.2 64.8,-271.4 117.0,-318.3 176.5,-356.3 239.6,-390.0 300.2,-426.8 354.4,-471.3 403.2,-522.1 451.9,-573.2 505.4,-618.6 564.7,-656.9 626.0,-692.7 683.5,-733.2 733.8,-782.4 778.5,-838.2 823.4,-893.8 873.9,-942.7 931.5,-983.1 992.4,-1019.5 1050.8,-1058.8 1103.4,-1105.2 1151.5,-1156.9 1200.5,-1207.7 1255.2,-1251.5 1316.3,-1287.6 1379.7,-1321.0 1459.7,-1224.8 1396.3,-1191.4 1335.2,-1155.3 1280.5,-1111.4 1231.5,-1060.7 1183.4,-1008.9 1130.8,-962.5 1072.4,-923.2 1011.5,-886.8 953.9,-846.4 903.4,-797.6 858.5,-741.9 813.8,-686.1 763.5,-636.9 706.0,-596.5 644.7,-560.6 585.4,-522.3 531.9,-477.0 483.2,-425.9 434.4,-375.0 380.2,-330.6 319.6,-293.8 256.5,-260.1 197.0,-222.0 144.8,-175.1 98.8,-120.9 53.3,-65.9 3.0,-16.8 -53.6,24.7 -113.3,62.5 -170.3,103.6 -221.3,151.9 -267.8,205.6 -315.2,258.3 -368.6,303.6 -429.2,340.3 -493.0,373.3 -553.7,409.9 -607.5,454.8 -655.7,506.5 -703.4,558.7 -755.8,605.3 -814.0,645.0 -874.2,682.2 -930.8,723.8 -980.5,773.6 -1025.2,829.5 -1070.6,884.5" fill="url(#dt)"/>
+<polyline points="-1150.6,788.3 -1105.2,733.2 -1060.5,677.4 -1010.8,627.5 -954.2,585.9 -894.0,548.7 -835.8,509.1 -783.4,462.5 -735.7,410.2 -687.5,358.5 -633.7,313.6 -573.0,277.0 -509.2,244.1 -448.6,207.3 -395.2,162.0 -347.8,109.4 -301.3,55.6 -250.3,7.3 -193.3,-33.7 -133.6,-71.6 -77.0,-113.0 -26.7,-162.2 18.8,-217.2 64.8,-271.4 117.0,-318.3 176.5,-356.3 239.6,-390.0 300.2,-426.8 354.4,-471.3 403.2,-522.1 451.9,-573.2 505.4,-618.6 564.7,-656.9 626.0,-692.7 683.5,-733.2 733.8,-782.4 778.5,-838.2 823.4,-893.8 873.9,-942.7 931.5,-983.1 992.4,-1019.5 1050.8,-1058.8 1103.4,-1105.2 1151.5,-1156.9 1200.5,-1207.7 1255.2,-1251.5 1316.3,-1287.6 1379.7,-1321.0" fill="none" stroke="#1c1b18" stroke-width="1.6"/>
+<polyline points="-1070.6,884.5 -1025.2,829.5 -980.5,773.6 -930.8,723.8 -874.2,682.2 -814.0,645.0 -755.8,605.3 -703.4,558.7 -655.7,506.5 -607.5,454.8 -553.7,409.9 -493.0,373.3 -429.2,340.3 -368.6,303.6 -315.2,258.3 -267.8,205.6 -221.3,151.9 -170.3,103.6 -113.3,62.5 -53.6,24.7 3.0,-16.8 53.3,-65.9 98.8,-120.9 144.8,-175.1 197.0,-222.0 256.5,-260.1 319.6,-293.8 380.2,-330.6 434.4,-375.0 483.2,-425.9 531.9,-477.0 585.4,-522.3 644.7,-560.6 706.0,-596.5 763.5,-636.9 813.8,-686.1 858.5,-741.9 903.4,-797.6 953.9,-846.4 1011.5,-886.8 1072.4,-923.2 1130.8,-962.5 1183.4,-1008.9 1231.5,-1060.7 1280.5,-1111.4 1335.2,-1155.3 1396.3,-1191.4 1459.7,-1224.8" fill="none" stroke="#1c1b18" stroke-width=".8" stroke-dasharray="5 5" opacity=".6"/>
+<polyline points="300.0,660.0 430.0,520.0 560.0,400.0 700.0,250.0 940.0,10.0 1150.0,-200.0" fill="none" stroke="#1c1b18" stroke-width="32.4" stroke-linejoin="round"/><polyline points="300.0,660.0 430.0,520.0 560.0,400.0 700.0,250.0 940.0,10.0 1150.0,-200.0" fill="none" stroke="#fbf8ef" stroke-width="30" stroke-linejoin="round"/>
+<polyline points="140.0,168.0 175.0,250.0 235.0,340.0 300.0,500.0 350.0,640.0" fill="none" stroke="#1c1b18" stroke-width="22.4" stroke-linejoin="round"/><polyline points="140.0,168.0 175.0,250.0 235.0,340.0 300.0,500.0 350.0,640.0" fill="none" stroke="#fbf8ef" stroke-width="20" stroke-linejoin="round"/>
+<polyline points="-420.0,520.0 -120.0,330.0 60.0,215.0 140.0,165.0 250.0,95.0 470.0,-50.0 700.0,-210.0" fill="none" stroke="#1c1b18" stroke-width="22.4" stroke-linejoin="round"/><polyline points="-420.0,520.0 -120.0,330.0 60.0,215.0 140.0,165.0 250.0,95.0 470.0,-50.0 700.0,-210.0" fill="none" stroke="#fbf8ef" stroke-width="20" stroke-linejoin="round"/>
+<polyline points="226.0,347.0 337.4,293.7" fill="none" stroke="#1c1b18" stroke-width="15.4"/><polyline points="226.0,347.0 337.4,293.7" fill="none" stroke="#fbf8ef" stroke-width="13"/>
+<text class="st" transform="translate(700,250) rotate(-45.0)" y="4" text-anchor="middle">Av. Antonieta Reis Veloso</text>
+<text class="st" transform="translate(168,234) rotate(66.9)" y="4" text-anchor="middle">R. Vicente Vaz</text>
+<text class="st" transform="translate(320,49) rotate(-33.4)" y="4" text-anchor="middle">R. Francisco Gomes</text>
+<polygon points="318.0,236.0 404.0,214.0 392.1,167.5 460.7,149.9 490.2,265.2 344.8,302.5 338.9,279.5 329.8,281.9" fill="#b5542b" opacity=".2"/><polygon points="318.0,236.0 404.0,214.0 392.1,167.5 460.7,149.9 490.2,265.2 344.8,302.5 338.9,279.5 329.8,281.9" fill="url(#hx)"/><polygon points="318.0,236.0 404.0,214.0 392.1,167.5 460.7,149.9 490.2,265.2 344.8,302.5 338.9,279.5 329.8,281.9" fill="none" stroke="#b5542b" stroke-width="3.2" stroke-linejoin="miter"/>
+<g transform="translate(402,242) rotate(-14.4)"><text class="lt" text-anchor="middle" y="-2">o terreno</text><text class="mono" style="font-size:10px" text-anchor="middle" y="15">EM L · 1.633 m²</text></g>
+<line x1="392" y1="168" x2="53" y2="-241" stroke="#b5542b" stroke-width="1.6" stroke-dasharray="7 5"/><circle cx="53" cy="-241" r="4" fill="#b5542b"/>
+<g transform="translate(236,-37) rotate(50.3)"><text class="mono acc" text-anchor="middle">~200 m ATÉ O MAR</text></g>
+<g transform="translate(-152,36) rotate(-39.7)"><text class="big" text-anchor="middle">Praia do Coqueiro</text></g>
+<g transform="translate(-357,-74) rotate(-39.7)"><text class="sea" text-anchor="middle">oceano Atlântico</text></g>
+<text class="mono" x="186" y="349" text-anchor="end">TRAVESSA VICENTE VAZ</text><text class="mono" x="186" y="364" text-anchor="end">SEM SAÍDA · ENTRADA DO TERRENO</text><line x1="192" y1="349" x2="252" y2="337" stroke="#1c1b18" stroke-width="1"/>
+<g transform="translate(345,125) rotate(-14.4)"><text class="mono dim" text-anchor="middle">QUARTEIRÃO DE CASAS</text><text class="mono dim" text-anchor="middle" y="13">~6 m MAIS ALTO</text></g>
+<g transform="translate(980,322)"><circle r="30" fill="#f3efe4" stroke="#1c1b18" stroke-width="1.2"/><path d="M0 -24 L8 14 L0 7 L-8 14 Z" fill="#1c1b18"/><text class="mono" text-anchor="middle" y="-36">N</text></g>
+<g transform="translate(-550,347)"><rect x="-14" y="-26" width="324" height="46" fill="#f3efe4" opacity=".9"/><line x1="0" y1="0" x2="296" y2="0" stroke="#1c1b18" stroke-width="2"/><line x1="0" y1="-6" x2="0" y2="0" stroke="#1c1b18" stroke-width="1.4"/><line x1="74" y1="-6" x2="74" y2="0" stroke="#1c1b18" stroke-width="1.4"/><line x1="148" y1="-6" x2="148" y2="0" stroke="#1c1b18" stroke-width="1.4"/><line x1="222" y1="-6" x2="222" y2="0" stroke="#1c1b18" stroke-width="1.4"/><line x1="296" y1="-6" x2="296" y2="0" stroke="#1c1b18" stroke-width="1.4"/><text class="mono" x="0" y="-11">0</text><text class="mono" x="148" y="-11" text-anchor="middle">50</text><text class="mono" x="296" y="-11" text-anchor="end">100 m</text><text class="mono dim" x="0" y="14">ESCALA APROXIMADA</text></g>
+</svg><!--/SIT--></div>
+    <figcaption>Planta de situação <span>o terreno, as ruas de acesso e a praia</span></figcaption></figure>
+  <div class="carimbo">
+    <div><small>Projeto</small><b>Hotel Praia do Coqueiro</b></div>
+    <div><small>Acesso</small><b>Travessa Vicente Vaz, sem saída</b></div>
+    <div><small>Terreno</small><b class="m">em L · 1.633 m²</b></div>
+    <div><small>Escala</small><b class="m">aproximada</b></div>
+    <div><small>Prancha</small><b class="m">A-00 · 2026</b></div>
+  </div>
+  <div class="hint on"><i>&darr;</i>Role para ver a planta</div>
+</div>
 <div id="plabels">
 </div>
 <div id="hud">
   <div id="scrim"></div>
   <div class="chip" id="chip"></div>
   <div class="cap" id="cap"><b></b><span></span></div>
-  <div class="say" data-a="3.0" data-b="4.7"><p>Praia do Coqueiro <i>· 200 m do mar</i></p><small>Luís Correia, PI · terreno de ~1.200 m² entre coqueiros</small></div>
+  <div class="say" data-a="3.0" data-b="4.7"><p>Praia do Coqueiro <i>· 200 m do mar</i></p><small>Luís Correia, PI · terreno de 1.633 m² entre coqueiros</small></div>
   <div class="say" data-a="9.4" data-b="10.9"><p>15 apartamentos <i>+ recepção</i></p><small>dois blocos baixos em volta de um pátio com piscina</small></div>
   <div class="say" data-a="16.8" data-b="17.9"><p>1 e 2 quartos <i>· varandas para a piscina</i></p><small>redes de tecido cru · guarda-corpos de varas de madeira</small></div>
   <div id="cal">
