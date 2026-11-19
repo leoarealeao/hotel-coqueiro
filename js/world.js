@@ -167,7 +167,7 @@ export function makeMaterials(T, env) {
       m = std('#ffffff', 0.97);
       patch(m, { kind, U, uniforms: { uS: { value: lin('#dcc59c') }, uG: { value: lin('#6d7f3c') }, uD: { value: lin('#a89064') }, uOut: { value: 0 }, uTex: { value: T.sand }, uTexN: { value: T.sandN } },
         head: 'uniform vec3 uS, uG, uD; uniform float uOut; uniform sampler2D uTex, uTexN;' + TRI,
-        color: `if (vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) discard; float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
+        color: `if ((vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) || (vWP.x > 38.2 && vWP.x < 42.7 && vWP.z > -13.9 && vWP.z < -11.7)) discard; float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
           vec3 st = texture2D(uTex, vWP.xz * .4).rgb;
           vec3 c = uS * (.9 + .15 * mid) * mix(1., clamp(lum(st) / .1825, .3, 2.2), .7);
           float far = smoothstep(4., 14., min(max(max(${LOT.x0.toFixed(1)} - vWP.x, vWP.x - ${LOT.x1.toFixed(1)}), max(-vWP.z, vWP.z - 23.)), max(max(${LOT.lx.toFixed(1)} - vWP.x, vWP.x - ${LOT.x1.toFixed(1)}), max(${LOT.lz.toFixed(1)} - vWP.z, vWP.z))));
@@ -181,7 +181,7 @@ export function makeMaterials(T, env) {
     } else if (kind === 'grass') {
       m = std('#ffffff', 0.95);
       patch(m, { kind, U, uniforms: { uA: { value: lin('#5c9534') }, uB: { value: lin('#97c052') } }, head: 'uniform vec3 uA, uB;',
-        color: `if (vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) discard; float n = fbm(vWP.xz * .6), f = vn(vWP.xz * 40.), g = vn(vWP.xz * 9.);
+        color: `if ((vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) || (vWP.x > 38.2 && vWP.x < 42.7 && vWP.z > -13.9 && vWP.z < -11.7)) discard; float n = fbm(vWP.xz * .6), f = vn(vWP.xz * 40.), g = vn(vWP.xz * 9.);
           diffuseColor.rgb = mix(uA, uB, smoothstep(.3, .75, n * .7 + g * .3)) * (.88 + .2 * f);`,
         bump: 'hgt = vn(vWP.xz * 40.) * .01 + vn(vWP.xz * 9.) * .01;' });
     } else if (kind === 'water') {
@@ -403,6 +403,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     // lote em L: muros e gramado são refeitos adiante; a frente avança FX, a ducha acompanha o muro do fundo
     if ((k === 4 && Math.abs(bb.max.y - 2) < 0.01 && bb.min.y < 0.01) || k === 3) { srcMat[k] = o.material; return; }
     if (k === 6 && bb.min.x < 16 + FX) return; // pisantes que ficariam dentro do estacionamento
+    if (k === 65 && bb.max.x - bb.min.x > 20) return; // cerca-viva em caixa atrás do bloco A: agora fica à vista, o jardim do deck entra no lugar
     if (k === 69) {
       const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2;
       if (x > 17.6 && x < 19) { const [nx, nz] = MOVED[moved++ % MOVED.length]; trunks.push({ x: nx, z: nz, h: bb.max.y }); } // coqueiros da faixa da frente vão para o jardim do deck
@@ -496,24 +497,27 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   }
   // deck de madeira com quiosque de churrasco, na ala do mar (decisão do Leonardo; não existe no GLB)
   {
-    const add = (geos, kind, hex, ink = 0, cast = true) => {
+    const add = (geos, kind, hex, ink = 0, cast = true, plain = false) => {
       geos.forEach((g) => { g.computeBoundingBox(); pieceIds(g, g.boundingBox); });
       const geo = mergeGeometries(geos.map((g) => (g.index ? g.toNonIndexed() : g))); geo.computeBoundingBox(); const bb = geo.boundingBox;
       const U = { uCut: { value: 1e4 }, uAxis: { value: V(1, 0, 0) }, uBand: { value: 0 } };
-      const mat = M.make(kind, hex, U); mat.side = THREE.DoubleSide; mat.shadowSide = THREE.DoubleSide;
-      const m = new THREE.Mesh(geo, mat); m.receiveShadow = true;
+      const mat = M.make(kind, hex, U); if (!plain) { mat.side = THREE.DoubleSide; mat.shadowSide = THREE.DoubleSide; }
+      const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; if (kind === 'poolwater') m.renderOrder = 3;
       if (cast) { m.castShadow = true; m.customDepthMaterial = depthPatch(U); }
       m.userData = { stage: 6, ink, U, lo: bb.min.x - 0.05, hi: bb.max.x + 0.05, mode: 'x', hotel: true, kind };
       root.add(m); groups.push(m);
     };
     const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
     const cyl = (r, h, x, y, z, r2 = r) => new THREE.CylinderGeometry(r2, r, h, 14).translate(x, y, z);
-    const D = DECK, K = KIO, rr = rng(31);
+    const D = DECK, K = KIO, rr = rng(31), PP = { x0: 38.2, x1: 42.7, z0: -13.9, z1: -11.7, d: 1.1 }, cp = 0.25;
     // tábuas de 14 cm correndo ao comprido, emendadas em comprimentos variados; cada uma é uma peça (tom e veio próprios)
     const planks = [], Wd = 0.14, gap = 0.003;
     for (let z = D.z0; z < D.z1 - 0.01; z += Wd + gap) {
-      let x = D.x0;
-      while (x < D.x1 - 0.01) { const l = Math.min(D.x1 - x, 2.4 + rr() * 2.2); planks.push(box(l - gap, 0.03, Wd, x + l / 2, D.h - 0.015, z + Wd / 2)); x += l; }
+      const hole = z + Wd > PP.z0 - cp && z < PP.z1 + cp; // a piscina do deck interrompe as tábuas
+      (hole ? [[D.x0, PP.x0 - cp], [PP.x1 + cp, D.x1]] : [[D.x0, D.x1]]).forEach(([xa, xb]) => {
+        let x = xa;
+        while (x < xb - 0.01) { const l = Math.min(xb - x, 2.4 + rr() * 2.2); planks.push(box(l - gap, 0.03, Wd, x + l / 2, D.h - 0.015, z + Wd / 2)); x += l; }
+      });
     }
     add(planks, 'deck', '#c98a52');
     // saia e barrotes
@@ -548,16 +552,86 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
       [-1, 1].forEach((sx) => furn.push(box(0.07, 0.43, 0.3, tx + sx * (tl / 2 - 0.45), by + 0.215, zb))); });
     [-1, 1].forEach((sx) => { const xb = tx + sx * (tl / 2 + 0.45); furn.push(box(0.4, 0.04, 0.4, xb, by + 0.45, tz)); [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => furn.push(box(0.05, 0.43, 0.05, xb + a * 0.16, by + 0.215, tz + b * 0.16))); });
     add(furn, 'wood', '#b08a5e');
-    // espreguiçadeiras no deck aberto, viradas para o sol da tarde
+    // espreguiçadeiras no deck aberto, viradas para a piscina do deck
     const fr2 = [], cush = [];
     [38.6, 40.4, 42.2, 44.0].forEach((x) => {
-      const z = -10.3;
+      const z = -8.7;
       fr2.push(box(0.66, 0.05, 1.95, x, by + 0.3, z)); [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => fr2.push(box(0.05, 0.28, 0.05, x + a * 0.28, by + 0.14, z + b * 0.85)));
-      cush.push(box(0.6, 0.07, 1.3, x, by + 0.36, z + 0.3));
-      const back = box(0.6, 0.07, 0.68, 0, 0, 0).rotateX(0.75).translate(x, by + 0.58, z - 0.6); cush.push(back);
-      const sup = box(0.66, 0.05, 0.72, 0, 0, 0).rotateX(0.75).translate(x, by + 0.53, z - 0.63); fr2.push(sup);
+      cush.push(box(0.6, 0.07, 1.3, x, by + 0.36, z - 0.3));
+      const back = box(0.6, 0.07, 0.68, 0, 0, 0).rotateX(-0.75).translate(x, by + 0.58, z + 0.6); cush.push(back);
+      const sup = box(0.66, 0.05, 0.72, 0, 0, 0).rotateX(-0.75).translate(x, by + 0.53, z + 0.63); fr2.push(sup);
     });
     add(fr2, 'wood', '#b08a5e'); add(cush, 'fabric', '#e6dcc6');
+
+    // piscina pequena no deck (4,5 × 2,2 m), na mesma pedra hijau da piscina do pátio
+    {
+      const L = PP.x1 - PP.x0, W2 = PP.z1 - PP.z0, cx = (PP.x0 + PP.x1) / 2, cz = (PP.z0 + PP.z1) / 2, hh = D.h + PP.d, ym = D.h - hh / 2;
+      add([new THREE.PlaneGeometry(L, W2).rotateX(-Math.PI / 2).translate(cx, -PP.d, cz),
+        new THREE.PlaneGeometry(L, hh).translate(cx, ym, PP.z0), new THREE.PlaneGeometry(L, hh).rotateY(Math.PI).translate(cx, ym, PP.z1),
+        new THREE.PlaneGeometry(W2, hh).rotateY(Math.PI / 2).translate(PP.x0, ym, cz), new THREE.PlaneGeometry(W2, hh).rotateY(-Math.PI / 2).translate(PP.x1, ym, cz),
+        // banco submerso num dos lados, como numa jacuzzi
+        box(L, 0.5, 0.45, cx, -PP.d + 0.75, PP.z0 + 0.225)], 'hijau', '#ffffff', 0, false, true);
+      add([box(L + 2 * cp, 0.04, cp, cx, D.h + 0.005, PP.z0 - cp / 2), box(L + 2 * cp, 0.04, cp, cx, D.h + 0.005, PP.z1 + cp / 2),
+        box(cp, 0.04, W2, PP.x0 - cp / 2, D.h + 0.005, cz), box(cp, 0.04, W2, PP.x1 + cp / 2, D.h + 0.005, cz)], 'hijau', '#ffffff', 0, true, true);
+      add([new THREE.PlaneGeometry(L, W2).rotateX(-Math.PI / 2).translate(cx, D.h - 0.07, cz)], 'poolwater', '#ffffff', 2, false, true);
+    }
+
+    // jardim do deck: canteiros tropicais junto aos muros e ilhas no gramado (moitas, agaves, pedras, primavera)
+    {
+      const g2 = rng(77), R2 = (a, b) => a + g2() * (b - a);
+      const blob = (x, y, z, s, sy = 0.8) => {
+        const sg = new THREE.SphereGeometry(1, 10, 7), pa = sg.attributes.position, ph = g2() * 9;
+        for (let i = 0; i < pa.count; i++) { const X = pa.getX(i), Y = pa.getY(i), Z = pa.getZ(i), f = 1 + 0.2 * Math.sin(X * 5.1 + ph) * Math.sin(Z * 4.3 + Y * 3.7) + 0.09 * Math.sin(Y * 11 + X * 7 + ph); pa.setXYZ(i, X * f, Math.max(-0.4, Y) * f, Z * f); }
+        sg.computeVertexNormals(); return sg.scale(s, s * sy, s).translate(x, y + s * sy * 0.4, z);
+      };
+      const clump = (x, z, s) => { const o = [blob(x, 0, z, s)]; for (let j = 0; j < 3; j++) { const a = g2() * 6.28; o.push(blob(x + Math.cos(a) * s * 0.7, 0, z + Math.sin(a) * s * 0.7, s * R2(0.55, 0.8))); } return o; };
+      const agave = (x, z, s, y0 = 0.05) => { const o = [], n = 15; for (let i = 0; i < n; i++) {
+        const len = s * R2(0.7, 1.1), tilt = i < 5 ? R2(0.15, 0.4) : R2(0.6, 1.15), g = new THREE.ConeGeometry(0.085 * s, len, 4, 1); g.scale(1, 1, 0.3); g.translate(0, len / 2, 0);
+        g.rotateX(tilt); g.rotateY(i * 2.4 + g2()); g.translate(x, y0, z); o.push(g); } return o; };
+      const rock = (x, z, s) => { const g = new THREE.IcosahedronGeometry(1, 1), pa = g.attributes.position, ph = g2() * 9;
+        for (let i = 0; i < pa.count; i++) { const X = pa.getX(i), Y = pa.getY(i), Z = pa.getZ(i), f = 1 + 0.22 * Math.sin(X * 3.1 + ph) * Math.cos(Z * 2.7 + Y * 2.2 + ph); pa.setXYZ(i, X * f, Y * f, Z * f); }
+        g.computeVertexNormals(); return g.scale(s * R2(0.8, 1.3), s * 0.55, s).rotateY(g2() * 6.28).translate(x, s * 0.2, z); };
+      const dark = [], light = [], ag = [], rocks = [], flor = [];
+      // muro do mar (atrás do deck) e muro lateral: faixa alta e cheia
+      for (let x = 33.2; x < 55.4; x += R2(1.3, 1.9)) (g2() < 0.5 ? dark : light).push(...clump(x, R2(-15.7, -15.3), R2(0.55, 0.85)));
+      for (let z = -14.2; z < -0.8; z += R2(1.4, 2.0)) (g2() < 0.5 ? dark : light).push(...clump(R2(32.75, 33.1), z, R2(0.45, 0.7)));
+      for (let z = -15; z < -7.2; z += R2(1.5, 2.1)) (g2() < 0.5 ? dark : light).push(...clump(R2(55.1, 55.4), z, R2(0.4, 0.6)));
+      for (let x = 33.6; x < 50.6; x += R2(1.7, 2.6)) (g2() < 0.5 ? dark : light).push(...clump(x, R2(0.35, 0.6), R2(0.32, 0.5))); // pé do bloco A
+      // primavera (bougainvillea) subindo no muro e num canto do pergolado
+      [[36, -15.95], [44.4, -15.95], [32.4, -8.5]].forEach(([x, z]) => {
+        const wx = z < -15, sp = (a) => [x + (wx ? R2(-a, a) : R2(-0.08, 0.12)), R2(0.9, 2.0), z + (wx ? R2(-0.08, 0.12) : R2(-a, a))];
+        for (let j = 0; j < 7; j++) dark.push(blob(...sp(1.2), R2(0.28, 0.42), 0.8));
+        for (let j = 0; j < 26; j++) { const q = sp(1.3); flor.push(blob(q[0] + (wx ? 0 : 0.2), q[1], q[2] + (wx ? 0.2 : 0), R2(0.1, 0.19), 0.75)); }
+      });
+      for (let j = 0; j < 6; j++) dark.push(blob(K.x0 + R2(-0.4, 0.8), D.h + K.h + R2(-0.25, 0.3), K.z1 + R2(-0.2, 0.45), R2(0.2, 0.32), 0.7));
+      for (let j = 0; j < 24; j++) flor.push(blob(K.x0 + R2(-0.5, 1.0), D.h + K.h + R2(-0.5, 0.45), K.z1 + R2(-0.1, 0.6), R2(0.08, 0.16), 0.75));
+      // yucas: troncos finos com um penacho de folhas em espada
+      const tr2 = [];
+      [[36.2, -7.3, 1.5], [35.75, -6.75, 0.9], [36.55, -6.6, 0.5], [37.4, -15.3, 1.7], [36.7, -15.5, 1.0], [54.9, -9.6, 1.3], [55.2, -10.4, 0.7], [45.0, -2.3, 1.2], [45.6, -2.7, 0.6]].forEach(([x, z, h]) => {
+        const lx = R2(-0.12, 0.12), lz = R2(-0.12, 0.12), g = new THREE.CylinderGeometry(0.05, 0.08, h, 8).translate(0, h / 2, 0); g.rotateZ(-lx / h).rotateX(lz / h).translate(x, 0, z); tr2.push(g);
+        ag.push(...agave(x + lx, z + lz, 0.62, h - 0.05));
+      });
+      // cajueiro: tronco baixo e torto, copa larga e achatada, cajus maduros
+      {
+        const cxj = 34.0, czj = -9.0, limb = (a, b, r) => { const d = b.clone().sub(a), g = new THREE.CylinderGeometry(r * 0.7, r, d.length(), 8); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.clone().normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); return g; };
+        const fork = V(cxj + 0.25, 1.15, czj - 0.1), cajus = [], verm = [];
+        tr2.push(limb(V(cxj, 0, czj), fork, 0.17));
+        [[1.5, 2.3, 0.4], [-1.2, 2.4, 0.9], [0.2, 2.5, -1.5], [-0.6, 2.2, -0.9], [0.9, 2.6, 1.3]].forEach(([dx, y, dz]) => tr2.push(limb(fork, V(cxj + dx, y, czj + dz), 0.1)));
+        for (let j = 0; j < 16; j++) { const a = j * 2.4, d = j < 4 ? R2(0, 0.6) : R2(1.0, 2.1); (j % 3 ? dark : light).push(blob(cxj + Math.cos(a) * d, R2(2.2, 2.9) - d * 0.22, czj + Math.sin(a) * d, R2(0.75, 1.1), 0.55)); }
+        for (let j = 0; j < 22; j++) { const a = g2() * 6.28, d = R2(0.5, 2.2); (j % 2 ? cajus : verm).push(new THREE.SphereGeometry(0.045, 6, 5).scale(1, 1.35, 1).translate(cxj + Math.cos(a) * d, R2(1.95, 2.35) - d * 0.2, czj + Math.sin(a) * d)); }
+        add(cajus, 'leaf', '#e8b83a', 6); add(verm, 'leaf', '#d2452c', 6);
+      }
+      add(tr2, 'wood', '#9b8468');
+      // ilhas entre o deck e o bloco A, em volta dos coqueiros
+      [[34.6, -4.6], [40.5, -3.2], [46.2, -3.6], [34.4, -13.2]].forEach(([x, z]) => {
+        for (let j = 0; j < 3; j++) { const a = j * 2.1 + g2(), d = R2(0.9, 1.4); ag.push(...agave(x + Math.cos(a) * d, z + Math.sin(a) * d, R2(0.55, 0.8))); }
+        for (let j = 0; j < 3; j++) { const a = j * 2.1 + 1 + g2(), d = R2(0.8, 1.6); rocks.push(rock(x + Math.cos(a) * d, z + Math.sin(a) * d, R2(0.22, 0.42))); }
+        light.push(...clump(x + R2(-1.6, -1.1), z + R2(0.6, 1.2), 0.38));
+      });
+      // canto do deck junto ao degrau e frente do deck
+      [[36.2, -7.2], [36.3, -12.5], [54.7, -6.0]].forEach(([x, z]) => { ag.push(...agave(x, z, 0.75)); rocks.push(rock(x + 0.7, z + 0.5, 0.3), rock(x - 0.5, z + 0.7, 0.2)); });
+      add(dark, 'leaf', '#3f6a2c', 6); add(light, 'leaf', '#6c9440', 6); add(ag, 'leaf', '#6f9a78', 6); add(rocks, 'stone', '#a39d92'); add(flor, 'leaf', '#d0387e', 6);
+    }
   }
   // gabarito da obra (só na etapa 1): linha de estacas no perímetro do lote
   {
@@ -584,9 +658,10 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   const nutMat = new THREE.MeshStandardMaterial({ color: '#7d6a2c', roughness: 0.7, metalness: 0 });
   const palms = new THREE.Group();
   trunks.push({ x: 34.4, z: -13.2, h: 7 }, { x: 46.2, z: -3.6, h: 6.2 });
+  trunks.push({ x: 44.2, z: -4.6, h: 4.2, s: 0.5 }, { x: 49.4, z: -2.3, h: 4, s: 0.4 }, { x: 55.0, z: -13.0, h: 4.6, s: 0.55 }, { x: 33.5, z: -1.7, h: 4, s: 0.45 }, { x: 52.6, z: -5.2, h: 4, s: 0.38 }); // coqueiros jovens do jardim (palmeira inteira em escala menor)
   trunks.forEach((t, i) => {
     const p = palmGeometry(t.h + 1.2, 100 + i, phone ? 0.6 : 1);
-    const g = new THREE.Group(); g.position.set(t.x, 0, t.z);
+    const g = new THREE.Group(); g.position.set(t.x, 0, t.z); if (t.s) g.scale.setScalar(t.s);
     const a = new THREE.Mesh(p.trunk, trunkMat), b = new THREE.Mesh(p.leaves, leafMat);
     a.castShadow = b.castShadow = true; a.receiveShadow = b.receiveShadow = true;
     a.userData = b.userData = { stage: 0, ink: 6, palm: true };

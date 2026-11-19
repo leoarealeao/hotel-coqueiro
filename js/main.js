@@ -138,8 +138,9 @@ const KEYS = [
   [20.2, 41, 5.1, 13.2, 38, 2, 13, 62],
   [20.8, 53.2, 3.4, 11, 51, 1.2, -4, 62],                    // passagem do fundo, rumo ao deck
   [21.4, 46.5, 1.9, -3.6, 49.5, 1.3, -11, 60],               // chegando ao deck
-  [22.1, 39.6, 1.75, -8.0, 50, 1.6, -11.4, 58],              // deck e pergolado do churrasco
-  [22.5, 44, 5, 2, 46, 1, 6, 60],
+  [22.1, 37.4, 1.8, -7.0, 50, 1.3, -12.2, 62],               // deck, piscina e pergolado do churrasco
+  [22.45, 45.5, 2.3, -9.6, 34, 1.6, -9.2, 60],               // piscina do deck e cajueiro
+  [22.75, 53, 12, -12, 40, 1, 6, 60],
   [23.0, 50.3, 10.5, 13, 30, 1, 13, 62],                     // final_do_fundo
   [24.1, 52.5, 13, 13, 30, 1, 13, 62],
 ];
@@ -202,7 +203,7 @@ const CAPS = [
   [16.1, 17.75, 'Apto 10', 'varanda para a piscina'],
   [17.75, 18.6, 'Apto 10', 'sala e cozinha'],
   [18.6, 19.6, 'Apto 10', 'quarto'],
-  [20.9, 22.4, 'Deck', 'pergolado · churrasco'],
+  [20.9, 22.4, 'Deck', 'piscina · pergolado · churrasco'],
 ];
 
 // ---------------------------------------------------------------- luz por mês

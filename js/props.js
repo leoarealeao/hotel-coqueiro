@@ -15,6 +15,7 @@ const PROPS = [
   ['potted_plant_04', 21.6, 0.1, 21.45, 140, 0.9],
   ['potted_plant_04', 24.35, 0.1, 20.9, 70, 0.9],
   ['potted_plant_02', 39.72, 3.0, 8.45, 0, 0.45],
+  ['potted_plant_04', 46.6, 0.18, -13.6, 30, 0.9], ['potted_plant_04', 53.6, 0.18, -8.0, 200, 0.85], ['potted_plant_02', 43.3, 0.18, -13.9, 0, 0.5], // deck
   // apto 10 (sala e cozinha, x 39,4–42,7 × z 2,9–8,6): modelos próprios, origem no meio da face de trás; sem largura = sem ajuste
   ['geladeira', 42.69, 3.0, 4.43, -90],              // parede da cozinha x = 42,69
   ['cozinha', 42.69, 3.0, 5.65, -90],                // bancada z 4,8–6,5
