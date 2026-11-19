@@ -250,10 +250,10 @@ const track = $('#track');
 const SIT = 2.2, sitEl = $('#sit'), sitSvg = $('#sitmap'), sitRot = $('#sitrot'), sframe = $('#sframe'), sitN = $('#sitn'), sitSc = $('#sitsc');
 const sitMk = [...sitSvg.querySelectorAll('.mk')].map((el) => ({ el, x: +el.dataset.x, y: +el.dataset.y, r: +(el.dataset.r || 0), a: +el.dataset.a, b: +el.dataset.b, up: el.classList.contains('up') }));
 const SIT_ROT = 30.9, SIT_C0 = [-60, -85]; // giro final (lado norte do lote para cima) e centro da cena aberta, em metros a partir do centro da planta
-let sitKey = '';
+let sitKey = '', sitCover = false, sitDrawn = false;
 function sitAt(raw) {
   const so = 1 - sm(SIT - 0.45, SIT - 0.05, raw);
-  sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so;
+  sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so; sitCover = so >= 1;
   if (so <= 0) return;
   const fw = sframe.clientWidth, fh = sframe.clientHeight, key = raw.toFixed(4) + fw + 'x' + fh;
   if (key === sitKey || !fw) return; sitKey = key;
@@ -282,7 +282,9 @@ const reveal = (i, now) => (STILL ? 1 : clamp((now - heroT0) / 1800, 0, 1));
 function render(now, forceV) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   const target = forceV ?? clamp(scrollY / innerHeight - SIT, 0, Z.total);
-  sitAt(forceV !== undefined ? (Q.has('sit') ? +Q.get('sit') : SIT) : scrollY / innerHeight);
+  sitAt(forceV !== undefined ? (window.__raw ?? (Q.has('sit') ? +Q.get('sit') : SIT)) : scrollY / innerHeight);
+  if (sitCover && sitDrawn) return; // a prancha de situação cobre a tela inteira: não há por que redesenhar o 3D por baixo
+  sitDrawn = true;
   sv = forceV !== undefined || STILL ? target : sv + (target - sv) * (1 - Math.exp(-dt * 5));
   if (Math.abs(target - sv) < 1e-4) sv = target;
   T.time.value = OFFLINE ? sv * 4 : now / 1000;
@@ -354,6 +356,8 @@ function render(now, forceV) {
 function frame(now) { requestAnimationFrame(frame); render(now); }
 if (!OFFLINE) requestAnimationFrame(frame);
 window.__render = (v) => { lastKey = ''; render(performance.now(), v); return true; };
+// rolagem crua (inclui a prancha de situação), para gravar o vídeo: 0 = topo da página
+window.__renderRaw = (raw) => { window.__raw = raw; lastKey = ''; render(performance.now(), Math.max(0, raw - SIT)); return true; };
 addEventListener('resize', () => {
   W = innerWidth; H = innerHeight;
   renderer.setSize(W, H, false); ink.setSize(W, H, DPR);
