@@ -15,7 +15,7 @@ const STILL = Q.has('still') || Q.has('offline'), OFFLINE = Q.has('offline');
 const camQ = Q.get('cam'), camN = camQ?.split(',').map(Number);
 const CAM = !camQ ? null : camN.length === 7 ? [camQ, camN.slice(0, 3), camN.slice(3, 6), camN[6]]
   : (await (await fetch('referencia/modelo/cameras.json')).json()).find((c) => c[0] === camQ);
-const PHONE = Math.min(innerWidth, innerHeight) <= 700;
+const PHONE = !Q.has('desk') && Math.min(innerWidth, innerHeight) <= 700; // ?desk força a qualidade de desktop (gravação de vídeo em janela pequena)
 const DPR = Math.min(+(Q.get('dpr') || devicePixelRatio || 1), PHONE ? 2 : 1.5);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
