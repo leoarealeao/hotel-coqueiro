@@ -245,8 +245,34 @@ document.body.classList.add('ready');
 
 // ---------------------------------------------------------------- scroll
 const track = $('#track');
-// a prancha de situação (A-00) ocupa a primeira tela de rolagem; o roteiro (Z, KEYS) começa depois dela
-const SIT = 1, sitEl = $('#sit');
+// a prancha de situação (A-00) ocupa as primeiras telas de rolagem: cena aberta com o mar e os pontos conhecidos,
+// zoom até o terreno, giro até a posição da planta e troca pela planta do térreo. O roteiro (Z, KEYS) começa depois.
+const SIT = 2.2, sitEl = $('#sit'), sitSvg = $('#sitmap'), sitRot = $('#sitrot'), sframe = $('#sframe'), sitN = $('#sitn'), sitSc = $('#sitsc');
+const sitMk = [...sitSvg.querySelectorAll('.mk')].map((el) => ({ el, x: +el.dataset.x, y: +el.dataset.y, r: +(el.dataset.r || 0), a: +el.dataset.a, b: +el.dataset.b, up: el.classList.contains('up') }));
+const SIT_ROT = 30.9, SIT_C0 = [-60, -85]; // giro final (lado norte do lote para cima) e centro da cena aberta, em metros a partir do centro da planta
+let sitKey = '';
+function sitAt(raw) {
+  const so = 1 - sm(SIT - 0.45, SIT - 0.05, raw);
+  sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so;
+  if (so <= 0) return;
+  const fw = sframe.clientWidth, fh = sframe.clientHeight, key = raw.toFixed(4) + fw + 'x' + fh;
+  if (key === sitKey || !fw) return; sitKey = key;
+  const t = sm(0.12, SIT - 0.6, raw), asp = fw / fh;
+  const W0 = Math.max(1700, 900 * asp), W1 = 2 * KP({ w: fw, h: fh }).h * asp, W = W0 * Math.pow(W1 / W0, t), H = W / asp;
+  const th = SIT_ROT * sm(0.5, 0.92, t), f = (W - W1) / (W0 - W1), c = Math.cos(th * Math.PI / 180), s = Math.sin(th * Math.PI / 180);
+  const cx = (SIT_C0[0] * c - SIT_C0[1] * s) * f, cy = (SIT_C0[0] * s + SIT_C0[1] * c) * f, k = W / fw;
+  sitSvg.setAttribute('viewBox', `${cx - W / 2} ${cy - H / 2} ${W} ${H}`);
+  sitRot.setAttribute('transform', `rotate(${th})`);
+  for (const m of sitMk) {
+    const o = sm(m.a - 0.1, m.a, t) * (1 - sm(m.b, m.b + 0.1, t));
+    m.el.style.display = o > 0 ? '' : 'none'; if (o <= 0) continue; m.el.style.opacity = o;
+    // "up": fora do grupo que gira, a posição é girada à mão e a etiqueta fica em pé; "al": dentro do grupo, gira com o mapa
+    m.el.setAttribute('transform', m.up ? `translate(${m.x * c - m.y * s} ${m.x * s + m.y * c}) scale(${k})` : `translate(${m.x} ${m.y}) rotate(${m.r}) scale(${k})`);
+  }
+  sitN.style.transform = `rotate(${th}deg)`;
+  const mpp = W / fw, nice = [10, 20, 50, 100, 200, 500].reduce((a, v) => (Math.abs(v / mpp - 120) < Math.abs(a / mpp - 120) ? v : a));
+  sitSc.firstChild.textContent = nice + ' m'; sitSc.lastChild.style.width = nice / mpp + 'px';
+}
 track.style.height = (Z.total + 1 + SIT) * 100 + 'vh';
 if (Q.has('v')) { history.scrollRestoration = 'manual'; scrollTo(0, (+Q.get('v') + SIT) * innerHeight); }
 let sv = Math.max(0, scrollY / innerHeight - SIT), last = performance.now(), lastKey = '';
@@ -256,8 +282,7 @@ const reveal = (i, now) => (STILL ? 1 : clamp((now - heroT0) / 1800, 0, 1));
 function render(now, forceV) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   const target = forceV ?? clamp(scrollY / innerHeight - SIT, 0, Z.total);
-  const raw = forceV !== undefined ? (Q.has('sit') ? 0 : SIT) : scrollY / innerHeight, so = 1 - sm(0.2, 0.85, raw);
-  sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so; sitEl.style.transform = so < 1 ? `translateY(${-(1 - so) * 6}vh)` : 'none';
+  sitAt(forceV !== undefined ? (Q.has('sit') ? +Q.get('sit') : SIT) : scrollY / innerHeight);
   sv = forceV !== undefined || STILL ? target : sv + (target - sv) * (1 - Math.exp(-dt * 5));
   if (Math.abs(target - sv) < 1e-4) sv = target;
   T.time.value = OFFLINE ? sv * 4 : now / 1000;
