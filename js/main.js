@@ -247,18 +247,21 @@ document.body.classList.add('ready');
 const track = $('#track');
 // a prancha de situação (A-00) ocupa as primeiras telas de rolagem: cena aberta com o mar e os pontos conhecidos,
 // zoom até o terreno, giro até a posição da planta e troca pela planta do térreo. O roteiro (Z, KEYS) começa depois.
-const SIT = 2.2, sitEl = $('#sit'), sitSvg = $('#sitmap'), sitRot = $('#sitrot'), sframe = $('#sframe'), sitN = $('#sitn'), sitSc = $('#sitsc');
+const SIT = 3.0, sitEl = $('#sit'), sitSvg = $('#sitmap'), sitRot = $('#sitrot'), sframe = $('#sframe'), sitN = $('#sitn'), sitSc = $('#sitsc');
 const sitMk = [...sitSvg.querySelectorAll('.mk')].map((el) => ({ el, x: +el.dataset.x, y: +el.dataset.y, r: +(el.dataset.r || 0), a: +el.dataset.a, b: +el.dataset.b, up: el.classList.contains('up') }));
-const SIT_ROT = 30.9, SIT_C0 = [-60, -85]; // giro final (lado norte do lote para cima) e centro da cena aberta, em metros a partir do centro da planta
+const SIT_ROT = 30.9, SIT_C0 = [-190, 55]; // giro final (lado norte do lote para cima) e centro da cena aberta, em metros a partir do centro da planta
 let sitKey = '', sitCover = false, sitDrawn = false;
+// o carrinho: percorre a rota (PI-116 -> Balão -> avenida -> travessa) na primeira tela e meia de rolagem, deixando o traço
+const sitRoute = $('#sitroute'), sitCar = $('#sitcar'), sitPts = sitRoute.getAttribute('points').trim().split(/\s+/).map((q) => q.split(',').map(Number)), sitLen = [0];
+for (let i = 1; i < sitPts.length; i++) sitLen.push(sitLen[i - 1] + Math.hypot(sitPts[i][0] - sitPts[i - 1][0], sitPts[i][1] - sitPts[i - 1][1]));
 function sitAt(raw) {
   const so = 1 - sm(SIT - 0.45, SIT - 0.05, raw);
   sitEl.style.display = so > 0 ? '' : 'none'; sitEl.style.opacity = so; sitCover = so >= 1;
   if (so <= 0) return;
   const fw = sframe.clientWidth, fh = sframe.clientHeight, key = raw.toFixed(4) + fw + 'x' + fh;
   if (key === sitKey || !fw) return; sitKey = key;
-  const t = sm(0.12, SIT - 0.6, raw), asp = fw / fh;
-  const W0 = Math.max(1700, 900 * asp), W1 = 2 * KP({ w: fw, h: fh }).h * asp, W = W0 * Math.pow(W1 / W0, t), H = W / asp;
+  const t = sm(1.3, SIT - 0.6, raw), asp = fw / fh;
+  const W0 = Math.max(2300, 1200 * asp), W1 = 2 * KP({ w: fw, h: fh }).h * asp, W = W0 * Math.pow(W1 / W0, t), H = W / asp;
   const th = SIT_ROT * sm(0.5, 0.92, t), f = (W - W1) / (W0 - W1), c = Math.cos(th * Math.PI / 180), s = Math.sin(th * Math.PI / 180);
   const cx = (SIT_C0[0] * c - SIT_C0[1] * s) * f, cy = (SIT_C0[0] * s + SIT_C0[1] * c) * f, k = W / fw;
   sitSvg.setAttribute('viewBox', `${cx - W / 2} ${cy - H / 2} ${W} ${H}`);
@@ -268,6 +271,14 @@ function sitAt(raw) {
     m.el.style.display = o > 0 ? '' : 'none'; if (o <= 0) continue; m.el.style.opacity = o;
     // "up": fora do grupo que gira, a posição é girada à mão e a etiqueta fica em pé; "al": dentro do grupo, gira com o mapa
     m.el.setAttribute('transform', m.up ? `translate(${m.x * c - m.y * s} ${m.x * s + m.y * c}) scale(${k})` : `translate(${m.x} ${m.y}) rotate(${m.r}) scale(${k})`);
+  }
+  {
+    const pc = clamp((raw - 0.06) / 1.24, 0, 1), d = (pc * pc * (3 - 2 * pc) * 0.5 + pc * 0.5) * sitLen[sitLen.length - 1];
+    let i = 1; while (i < sitLen.length - 1 && sitLen[i] < d) i++;
+    const u = (d - sitLen[i - 1]) / Math.max(1e-6, sitLen[i] - sitLen[i - 1]), [xa, ya] = sitPts[i - 1], [xb, yb] = sitPts[i];
+    sitRoute.setAttribute('stroke-dasharray', `${d / k} 99999`); // traço não escala com o zoom: o comprimento vai em pixels de tela
+    sitCar.setAttribute('transform', `translate(${xa + (xb - xa) * u} ${ya + (yb - ya) * u}) rotate(${Math.atan2(yb - ya, xb - xa) * 180 / Math.PI}) scale(${k})`);
+    sitCar.style.opacity = 1 - sm(0.25, 0.6, t);
   }
   sitN.style.transform = `rotate(${th}deg)`;
   const mpp = W / fw, nice = [10, 20, 50, 100, 200, 500].reduce((a, v) => (Math.abs(v / mpp - 120) < Math.abs(a / mpp - 120) ? v : a));
