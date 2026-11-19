@@ -16,6 +16,7 @@ Leonardo responde em português, quer respostas curtas e objetivas, é visual, e
 ## Coordenadas (metros)
 - x: frente (0, estacionamento/acesso) → fundo (53). z: lado do mar (0) → lado de terra (23). y para cima.
 - Terreno ~53 × 23 m (~1.200 m²). Frente com "dente": muro em x=0 para z 0–15,6 e recuado para x=2 em z 15,6–23 (entrada de carro).
+- ATUALIZAÇÃO (certidão da prefeitura): o lote é em L, 1.632,78 m² — frente 24 m, fundos 40,2 m, norte 30 + 23,9 m. No site (`js/world.js`, `FX`/`LOT`) os blocos ficam nas coordenadas do GLB e o lote vai de x=3 a x=56 (blocos 3 m mais perto do estacionamento, passagem de 5 m no fundo); a ala nova é x 32,1–56, z −16,2–0, com deck de madeira 17 × 8 m e pergolado de churrasco (bancada, churrasqueira, mesa para 10). Muros e gramado do lote são refeitos em código; o resto segue o GLB.
 
 ## Programa
 - Estacionamento de areia compactada na frente (x 0–~16), 6 vagas.

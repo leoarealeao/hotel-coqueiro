@@ -101,10 +101,10 @@ const lamps = [[41.0, 5.3, 6.0, 1.0], [37.7, 5.3, 6.8, 0.8], [24.4, 2.4, 18.8, 1
 // ---------------------------------------------------------------- roteiro
 // a planta: o GLB visto de cima por lente de 2°, cortado a 1,30 m; o mar fica em cima
 const KP = (r) => (r.w >= r.h
-  ? { T: V(26.5, 0, 11.5), az: 90, el: 89.6, h: Math.max(23 * 0.58, 53 * 0.55 / (r.w / r.h)), fov: 2 }
+  ? { T: V(29.5, 0, 3.4), az: 90, el: 89.6, h: Math.max(39.2 * 0.58, 53 * 0.55 / (r.w / r.h)), fov: 2 }
   : { T: V(26.5, 0, 11.0), az: 180, el: 89.6, h: Math.max(53 * 0.54, 23 * 0.6 / (r.w / r.h)), fov: 2 }); // celular: a planta em pé, mar à esquerda
-const K1 = { T: V(26.5, 0.5, 11.5), az: -142, el: 30, h: PHONE ? 30 : 15.5, fov: 2 }; // axonométrica do lote, tela cheia
-const Z = { tilt: [0.3, 1.3], rewind: [1.3, 1.85], pour: [1.85, 2.55], lens: [2.35, 3.2], build: [3.2, 10.0], walk: 10.0, end: [20.7, 21.6], total: 21.8 };
+const K1 = { T: V(29.5, 0.5, 6.5), az: -142, el: 30, h: PHONE ? 30 : 19, fov: 2 }; // axonométrica do lote, tela cheia
+const Z = { tilt: [0.3, 1.3], rewind: [1.3, 1.85], pour: [1.85, 2.55], lens: [2.35, 3.2], build: [3.2, 10.0], walk: 10.0, end: [23.0, 23.9], total: 24.1 };
 const INK_STAGE = ['', 'Terreno vazio', 'Fundações', 'Estrutura', 'Paredes', 'Telhados de palha', 'Paisagismo e piscina', 'Paisagismo e piscina'];
 const KEYS = [
   // a obra: do alto, depois no meio do pátio enquanto as paredes sobem, depois os telhados
@@ -136,8 +136,12 @@ const KEYS = [
   [19.5, 37.7, 4.6, 8.1, 37.7, 4.4, 12, 68],
   [19.85, 37.7, 4.75, 10.6, 40, 3, 13.5, 62],
   [20.2, 41, 5.1, 13.2, 38, 2, 13, 62],
-  [20.7, 50.3, 10.5, 13, 30, 1, 13, 62],                     // final_do_fundo
-  [21.8, 52.5, 13, 13, 30, 1, 13, 62],
+  [20.8, 53.2, 3.4, 11, 51, 1.2, -4, 62],                    // passagem do fundo, rumo ao deck
+  [21.4, 46.5, 1.9, -3.6, 49.5, 1.3, -11, 60],               // chegando ao deck
+  [22.1, 39.6, 1.75, -8.0, 50, 1.6, -11.4, 58],              // deck e pergolado do churrasco
+  [22.5, 44, 5, 2, 46, 1, 6, 60],
+  [23.0, 50.3, 10.5, 13, 30, 1, 13, 62],                     // final_do_fundo
+  [24.1, 52.5, 13, 13, 30, 1, 13, 62],
 ];
 const pathP = new THREE.CatmullRomCurve3(KEYS.map((k) => V(k[1], k[2], k[3])), false, 'centripetal');
 const pathL = new THREE.CatmullRomCurve3(KEYS.map((k) => V(k[4], k[5], k[6])), false, 'centripetal');
@@ -172,8 +176,10 @@ const LABELS = [
   [24.375, 19.55, '<b>Recepção</b><span>aberta · em cima o 12</span>', 's'],
   ...[[32.625, 5, 13], [39.375, 6, 14], [47.625, 7, 15]].map(([x, a, b]) => [x, 19.55, `<b>${a}<small>+${b}</small></b><span>1 quarto · ~35 m²</span>`, '']),
   [36.75, 13, '<b>Piscina</b><span>15 × 2 m</span>', 's'],
-  [8, 7.5, '<b>Estacionamento</b><span>6 vagas</span>', 's'],
-  [26.5, -2.2, PHONE ? '<b>&larr; mar</b>' : '<b>&uarr; mar a ~200 m</b>', 's'],
+  [11, 7.5, '<b>Estacionamento</b><span>6 vagas</span>', 's'],
+  [42, -10.5, '<b>Deck</b><span>17 × 8 m</span>', 's'],
+  [50.3, -11.2, '<b>Churrasco</b><span>pergolado</span>', 's'],
+  [17.5, -6, PHONE ? '<b>&larr; mar</b>' : '<b>&uarr; mar a ~200 m</b>', 's'],
 ];
 const plabels = $('#plabels');
 plabels.innerHTML = LABELS.map(([, , h, c]) => `<div class="lb ${c}">${h}</div>`).join('');
@@ -196,6 +202,7 @@ const CAPS = [
   [16.1, 17.75, 'Apto 10', 'varanda para a piscina'],
   [17.75, 18.6, 'Apto 10', 'sala e cozinha'],
   [18.6, 19.6, 'Apto 10', 'quarto'],
+  [20.9, 22.4, 'Deck', 'pergolado · churrasco'],
 ];
 
 // ---------------------------------------------------------------- luz por mês

@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lin = (h) => new THREE.Color(h); // THREE.Color já converte hex sRGB para linear
 
 // etapas: 0 existente, 1 gabarito, 2 fundações, 3 estrutura, 4 paredes, 5 telhados, 6 paisagismo, 7 inauguração
@@ -12,6 +13,14 @@ export const STAGES = [
   [-9, -9], [-9, -8], [0.3, 2.8], [2.8, 5.8], [5.8, 8.8], [8.8, 11.0], [11.0, 13.4], [13.4, 14.0],
 ];
 export const MONTHS = 14;
+
+// O lote (certidão da prefeitura): em L, 1.632,78 m². Nas coordenadas do GLB os blocos não saem do lugar;
+// a frente (muro, estacionamento) avança FX metros na direção deles, o fundo recua FX, e abre-se a ala do mar.
+export const FX = 3;
+export const LOT = { x0: FX, x1: 53 + FX, z1: 23, lx: 29.1 + FX, lz: -16.2 }; // ala nova: x lx..x1, z lz..0
+const PERIM = [[LOT.x0, 0], [LOT.lx, 0], [LOT.lx, LOT.lz], [LOT.x1, LOT.lz], [LOT.x1, LOT.z1], [2 + FX, LOT.z1], [2 + FX, 15.6], [LOT.x0, 15.6], [LOT.x0, 0]];
+const DECK = { x0: 37, x1: 54, z0: -14.5, z1: -6.5, h: 0.18 };       // deck de madeira 17 × 8 m
+const KIO = { x0: 47, x1: 53.5, z0: -14, z1: -8.5, h: 2.6 }; // pergolado do churrasco sobre o deck
 
 // -------------------------------------------------------------------------------------------- ruído GLSL
 const NOISE = `
@@ -123,6 +132,12 @@ export function makeMaterials(T, env) {
       patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
         color: 'vec3 tx = texture2D(uTex, pcUV(.7)).rgb; diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .25, 2.5), .8 * (.35 + .65 * near(.03))) * .5 * pcTone();',
         normal: 'normal = toView(pcN(uTexN, .7, 1.), normal);', cavity: .3 });
+    } else if (kind === 'deck') {
+      // tábuas de cumaru do deck: mesma madeira por peça, mais clara e quente
+      m = std(hex, 0.5);
+      patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
+        color: 'vec3 tx = texture2D(uTex, pcUV(.7)).rgb; diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .45, 1.8), .6 * (.35 + .65 * near(.03))) * pcTone();',
+        normal: 'normal = toView(pcN(uTexN, .7, .6), normal);' });
     } else if (kind === 'cement') {
       m = std('#b6b2aa', 0.5);
       patch(m, { kind, U, uniforms: { uTex: { value: T.conc }, uTexN: { value: T.concN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
@@ -155,7 +170,7 @@ export function makeMaterials(T, env) {
         color: `if (vWP.x > 29.25 && vWP.x < 44.25 && vWP.z > 12. && vWP.z < 14.) discard; float big = fbm(vWP.xz * .045 + 3.1), mid = fbm(vWP.xz * .5), fine = vn(vWP.xz * 18.);
           vec3 st = texture2D(uTex, vWP.xz * .4).rgb;
           vec3 c = uS * (.9 + .15 * mid) * mix(1., clamp(lum(st) / .1825, .3, 2.2), .7);
-          float far = smoothstep(4., 14., max(max(-vWP.x, vWP.x - 53.), max(-vWP.z, vWP.z - 23.)));
+          float far = smoothstep(4., 14., min(max(max(${LOT.x0.toFixed(1)} - vWP.x, vWP.x - ${LOT.x1.toFixed(1)}), max(-vWP.z, vWP.z - 23.)), max(max(${LOT.lx.toFixed(1)} - vWP.x, vWP.x - ${LOT.x1.toFixed(1)}), max(${LOT.lz.toFixed(1)} - vWP.z, vWP.z))));
           float veg = smoothstep(.47, .62, big + .25 * mid) * uOut * far;
           c = mix(c, uD * (.8 + .3 * mid), smoothstep(.35, .5, big) * .35 * uOut * far);
           c = mix(c, uG * (.7 + .5 * mid) * (.85 + .3 * fine), veg);
@@ -213,6 +228,12 @@ export function makeMaterials(T, env) {
       patch(m, { kind, U, uniforms: { uTex: { value: T.wood }, uTexN: { value: T.woodN } }, head: 'uniform sampler2D uTex, uTexN;' + TRI,
         color: 'vec3 tx = texture2D(uTex, pcUV(.9)).rgb; diffuseColor.rgb *= mix(1., clamp(lum(tx) / .0501, .3, 2.2), .7 * (.35 + .65 * near(.03))) * .75 * pcTone();',
         normal: 'normal = toView(pcN(uTexN, .9, 1.), normal);', cavity: .3 });
+    } else if (kind === 'mat') {
+      // esteira de palha trançada: xadrez de fitas com frestas (a luz passa em pontinhos, como na referência)
+      m = std(hex, 0.9, { envMapIntensity: 0.3 });
+      patch(m, { kind, U, color: `vec2 q = vWP.xz / .045; vec2 c = floor(q), f = fract(q); float w = mod(c.x + c.y, 2.);
+        if (min(min(f.x, 1. - f.x), min(f.y, 1. - f.y)) < .1 * near(.05)) discard;
+        diffuseColor.rgb *= (.78 + .3 * w) * (.85 + .3 * h21(c)) * (.9 + .2 * fbm(vWP.xz * .8));` });
     } else if (kind === 'inox') {
       m = std('#c9ccd0', 0.32, { metalness: 0.75, envMapIntensity: 1.0 });
       patch(m, { kind, U, rough: 'roughnessFactor = .28 + .1 * vn(vec2(vWP.y * 400., (vWP.x + vWP.z) * 4.));' });
@@ -366,7 +387,8 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   const gltf = await new GLTFLoader().loadAsync(url, (e) => onProgress && e.total && onProgress(e.loaded / e.total));
   const M = makeMaterials(T, env);
   const root = new THREE.Group();
-  const buckets = new Map(), trunks = [];
+  const buckets = new Map(), trunks = [], srcMat = {};
+  const MOVED = [[34.6, -4.6], [40.5, -3.2]]; let moved = 0;
   gltf.scene.updateMatrixWorld(true);
   const toRemove = [];
   gltf.scene.traverse((o) => { if (o.isLight) toRemove.push(o); });
@@ -378,7 +400,16 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
     g.computeBoundingBox();
     const bb = g.boundingBox;
-    if (k === 69) { trunks.push({ x: (bb.min.x + bb.max.x) / 2, z: (bb.min.z + bb.max.z) / 2, h: bb.max.y }); return; }
+    // lote em L: muros e gramado são refeitos adiante; a frente avança FX, a ducha acompanha o muro do fundo
+    if ((k === 4 && Math.abs(bb.max.y - 2) < 0.01 && bb.min.y < 0.01) || k === 3) { srcMat[k] = o.material; return; }
+    if (k === 6 && bb.min.x < 16 + FX) return; // pisantes que ficariam dentro do estacionamento
+    if (k === 69) {
+      const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2;
+      if (x > 17.6 && x < 19) { const [nx, nz] = MOVED[moved++ % MOVED.length]; trunks.push({ x: nx, z: nz, h: bb.max.y }); } // coqueiros da faixa da frente vão para o jardim do deck
+      else trunks.push({ x: x < 17.6 ? x + FX : x, z, h: bb.max.y });
+      return;
+    }
+    if (k !== 70 && (bb.max.x <= 17.6 || bb.min.x >= 52.15)) { g.translate(FX, 0, 0); g.computeBoundingBox(); }
     const c = classify(k, bb, o.material.color && o.material.color.getHexString());
     if (!c) return;
     const inkOnly = zoned(k, bb);
@@ -392,6 +423,20 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     if (o.matrixWorld.determinant() < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } }
     buckets.get(key).geos.push(g);
   });
+  // muros do lote em L (0,15 × 2 m) e gramado, nos mesmos grupos de material do GLB
+  {
+    const put = (k, g) => {
+      g.computeBoundingBox(); const bb = g.boundingBox, c = classify(k, bb), key = `${k}|${c.stage}|${c.kind}|${c.mode}`;
+      if (!buckets.has(key)) buckets.set(key, { k, c, geos: [], mat: srcMat[k], inkOnly: false });
+      pieceIds(g, bb); buckets.get(key).geos.push(g);
+    };
+    const t = 0.15, L = LOT;
+    [[L.x0, L.lx, -t, 0], [L.lx - t, L.lx, L.lz, -t], [L.lx - t, L.x1 + t, L.lz - t, L.lz], [L.x1, L.x1 + t, L.lz, L.z1], [2 + FX, L.x1 + t, L.z1, L.z1 + t],
+      [L.x0 - t, L.x0, 0, 15.6], [L.x0, 2 + FX, 15.6, 15.6 + t], [2 + FX, 2 + FX + t, 15.6, 17.3], [2 + FX, 2 + FX + t, 22.6, L.z1]]
+      .forEach(([x0, x1, z0, z1]) => put(4, new THREE.BoxGeometry(x1 - x0, 2, z1 - z0).translate((x0 + x1) / 2, 1, (z0 + z1) / 2)));
+    [[16 + FX, L.x1, 0, L.z1], [L.lx, L.x1, L.lz, 0]]
+      .forEach(([x0, x1, z0, z1]) => put(3, new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0.04, (z0 + z1) / 2)));
+  }
   const groups = [];
   for (const b of buckets.values()) {
     const geo = mergeGeometries(b.geos.map((g) => (g.index.array instanceof Uint32Array ? g : g.setIndex(new THREE.BufferAttribute(new Uint32Array(g.index.array), 1)))));
@@ -449,9 +494,74 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     // lâmina d'água 4 cm abaixo da borda
     add(new THREE.PlaneGeometry(L, Wd).rotateX(-Math.PI / 2).translate(cx, 0.06, cz), 'poolwater', 2, false);
   }
+  // deck de madeira com quiosque de churrasco, na ala do mar (decisão do Leonardo; não existe no GLB)
+  {
+    const add = (geos, kind, hex, ink = 0, cast = true) => {
+      geos.forEach((g) => { g.computeBoundingBox(); pieceIds(g, g.boundingBox); });
+      const geo = mergeGeometries(geos.map((g) => (g.index ? g.toNonIndexed() : g))); geo.computeBoundingBox(); const bb = geo.boundingBox;
+      const U = { uCut: { value: 1e4 }, uAxis: { value: V(1, 0, 0) }, uBand: { value: 0 } };
+      const mat = M.make(kind, hex, U); mat.side = THREE.DoubleSide; mat.shadowSide = THREE.DoubleSide;
+      const m = new THREE.Mesh(geo, mat); m.receiveShadow = true;
+      if (cast) { m.castShadow = true; m.customDepthMaterial = depthPatch(U); }
+      m.userData = { stage: 6, ink, U, lo: bb.min.x - 0.05, hi: bb.max.x + 0.05, mode: 'x', hotel: true, kind };
+      root.add(m); groups.push(m);
+    };
+    const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+    const cyl = (r, h, x, y, z, r2 = r) => new THREE.CylinderGeometry(r2, r, h, 14).translate(x, y, z);
+    const D = DECK, K = KIO, rr = rng(31);
+    // tábuas de 14 cm correndo ao comprido, emendadas em comprimentos variados; cada uma é uma peça (tom e veio próprios)
+    const planks = [], Wd = 0.14, gap = 0.003;
+    for (let z = D.z0; z < D.z1 - 0.01; z += Wd + gap) {
+      let x = D.x0;
+      while (x < D.x1 - 0.01) { const l = Math.min(D.x1 - x, 2.4 + rr() * 2.2); planks.push(box(l - gap, 0.03, Wd, x + l / 2, D.h - 0.015, z + Wd / 2)); x += l; }
+    }
+    add(planks, 'deck', '#c98a52');
+    // saia e barrotes
+    add([box(D.x1 - D.x0, D.h - 0.03, 0.05, (D.x0 + D.x1) / 2, (D.h - 0.03) / 2, D.z0 + 0.025), box(D.x1 - D.x0, D.h - 0.03, 0.05, (D.x0 + D.x1) / 2, (D.h - 0.03) / 2, D.z1 - 0.025),
+      box(0.05, D.h - 0.03, D.z1 - D.z0, D.x0 + 0.025, (D.h - 0.03) / 2, (D.z0 + D.z1) / 2), box(0.05, D.h - 0.03, D.z1 - D.z0, D.x1 - 0.025, (D.h - 0.03) / 2, (D.z0 + D.z1) / 2),
+      // degrau de acesso, do lado do pátio
+      box(3, 0.09, 0.4, 51, 0.045, D.z1 + 0.2)], 'wood', '#8a6748');
+    // pergolado (referências do Leonardo): pilares quadrados, vigas, caibros e cobertura de esteira trançada sobre ripas
+    const kx = [K.x0 + 0.1, (K.x0 + K.x1) / 2, K.x1 - 0.1], kz = [K.z0 + 0.1, K.z1 - 0.1];
+    const posts = [], yb = D.h + K.h, zc = (K.z0 + K.z1) / 2, xc = (K.x0 + K.x1) / 2, ov = 0.45;
+    kx.forEach((x) => kz.forEach((z) => posts.push(box(0.15, K.h, 0.15, x, D.h + K.h / 2, z))));
+    kz.forEach((z) => posts.push(box(K.x1 - K.x0 + 2 * ov, 0.2, 0.09, xc, yb + 0.1, z)));
+    for (let x = K.x0 - ov + 0.1; x < K.x1 + ov; x += 0.52) posts.push(box(0.06, 0.15, K.z1 - K.z0 + 2 * ov, x, yb + 0.275, zc));
+    const slats = [];
+    for (let z = K.z0 - ov + 0.05; z < K.z1 + ov; z += 0.11) slats.push(box(K.x1 - K.x0 + 2 * ov, 0.02, 0.035, xc, yb + 0.36, z));
+    add(posts, 'wood', '#b9824f'); add(slats, 'wood', '#b9824f');
+    add([new THREE.PlaneGeometry(K.x1 - K.x0 + 2 * ov - 0.1, K.z1 - K.z0 + 2 * ov - 0.1).rotateX(-Math.PI / 2).translate(xc, yb + 0.375, zc)], 'mat', '#cdb07a', 3);
+    // bancada de alvenaria com churrasqueira, no fundo do quiosque (lado do muro)
+    const bz = K.z0 + 0.45, by = D.h;
+    add([box(4.4, 0.86, 0.6, K.x0 + 2.5, by + 0.43, bz), box(1.3, 2.05, 0.75, K.x1 - 0.95, by + 1.025, bz + 0.02),
+      // coifa e chaminé, atravessando a palha
+      (() => { const g = new THREE.CylinderGeometry(0.22, 0.6, 0.7, 4, 1).rotateY(Math.PI / 4); g.scale(1, 1, 0.75); g.translate(K.x1 - 0.95, by + 2.4, bz + 0.02); return g; })(),
+      box(0.34, 1.0, 0.34, K.x1 - 0.95, by + 3.2, bz + 0.02), box(0.5, 0.06, 0.5, K.x1 - 0.95, by + 3.85, bz + 0.02)], 'plaster', '#f4f1ea');
+    add([box(4.5, 0.05, 0.68, K.x0 + 2.5, by + 0.885, bz + 0.02)], 'cement', '#b6b2aa');
+    add([box(0.95, 0.5, 0.06, K.x1 - 0.95, by + 1.25, bz + 0.37), box(0.3, 0.2, 0.012, K.x1 - 0.95, by + 3.68, bz + 0.2)], 'flat', '#1b1512', 0, false); // boca da churrasqueira
+    add([box(0.9, 0.02, 0.5, K.x1 - 0.95, by + 1.0, bz + 0.12), box(0.6, 0.012, 0.42, K.x0 + 1.2, by + 0.915, bz + 0.02), cyl(0.014, 0.26, K.x0 + 1.2, by + 1.04, bz - 0.2)], 'inox', '#c9ccd0');
+    // mesa comprida para 10, com dois bancos e duas cabeceiras
+    const tx = (K.x0 + K.x1) / 2 - 0.2, tz = K.z1 - 2.0, tl = 3.2, furn = [];
+    for (let i = 0; i < 6; i++) furn.push(box(tl, 0.045, 0.155, tx, by + 0.76, tz - 0.4 + i * 0.16));
+    [-1, 1].forEach((sx) => { [-1, 1].forEach((sz) => furn.push(box(0.08, 0.74, 0.08, tx + sx * (tl / 2 - 0.25), by + 0.37, tz + sz * 0.36))); furn.push(box(0.06, 0.08, 0.72, tx + sx * (tl / 2 - 0.25), by + 0.68, tz)); });
+    [-1, 1].forEach((sz) => { const zb = tz + sz * 0.82; for (let i = 0; i < 2; i++) furn.push(box(tl - 0.3, 0.04, 0.17, tx, by + 0.45, zb - 0.09 + i * 0.18));
+      [-1, 1].forEach((sx) => furn.push(box(0.07, 0.43, 0.3, tx + sx * (tl / 2 - 0.45), by + 0.215, zb))); });
+    [-1, 1].forEach((sx) => { const xb = tx + sx * (tl / 2 + 0.45); furn.push(box(0.4, 0.04, 0.4, xb, by + 0.45, tz)); [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => furn.push(box(0.05, 0.43, 0.05, xb + a * 0.16, by + 0.215, tz + b * 0.16))); });
+    add(furn, 'wood', '#b08a5e');
+    // espreguiçadeiras no deck aberto, viradas para o sol da tarde
+    const fr2 = [], cush = [];
+    [38.6, 40.4, 42.2, 44.0].forEach((x) => {
+      const z = -10.3;
+      fr2.push(box(0.66, 0.05, 1.95, x, by + 0.3, z)); [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => fr2.push(box(0.05, 0.28, 0.05, x + a * 0.28, by + 0.14, z + b * 0.85)));
+      cush.push(box(0.6, 0.07, 1.3, x, by + 0.36, z + 0.3));
+      const back = box(0.6, 0.07, 0.68, 0, 0, 0).rotateX(0.75).translate(x, by + 0.58, z - 0.6); cush.push(back);
+      const sup = box(0.66, 0.05, 0.72, 0, 0, 0).rotateX(0.75).translate(x, by + 0.53, z - 0.63); fr2.push(sup);
+    });
+    add(fr2, 'wood', '#b08a5e'); add(cush, 'fabric', '#e6dcc6');
+  }
   // gabarito da obra (só na etapa 1): linha de estacas no perímetro do lote
   {
-    const pts = [[0, 0], [53, 0], [53, 23], [2, 23], [2, 15.6], [0, 15.6], [0, 0]];
+    const pts = PERIM;
     const gs = [];
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, z0] = pts[i], [x1, z1] = pts[i + 1]; const L = Math.hypot(x1 - x0, z1 - z0);
@@ -473,6 +583,7 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, side: THREE.DoubleSide, envMap: env, envMapIntensity: 0.4 });
   const nutMat = new THREE.MeshStandardMaterial({ color: '#7d6a2c', roughness: 0.7, metalness: 0 });
   const palms = new THREE.Group();
+  trunks.push({ x: 34.4, z: -13.2, h: 7 }, { x: 46.2, z: -3.6, h: 6.2 });
   trunks.forEach((t, i) => {
     const p = palmGeometry(t.h + 1.2, 100 + i, phone ? 0.6 : 1);
     const g = new THREE.Group(); g.position.set(t.x, 0, t.z);
@@ -493,7 +604,8 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
   const spots = [];
   while (spots.length < NP) {
     const x = -70 + r() * 210, z = -120 + r() * 230;
-    if (x > -7 && x < 60 && z > -7 && z < 30) continue;   // o lote e uma folga
+    if (x > -4 && x < 63 && z > -7 && z < 30) continue;   // o lote e uma folga
+    if (x > LOT.lx - 6 && x < 63 && z > LOT.lz - 6 && z < 0) continue; // a ala do deck
     if (x > -16 && x < -7 && z > -40 && z < 60) continue; // a rua de acesso
     if (z < -105) continue;                               // praia
     spots.push([x, z, r() * 6.28, 0.8 + r() * 0.4]);
@@ -531,9 +643,10 @@ export async function buildWorld({ url, T, env, phone, onProgress }) {
     while (n < NB) {
       const near = r() < 0.4;
       let x, z;
-      if (near) { const side = Math.floor(r() * 4); x = side < 2 ? -3 + r() * 62 : (side === 2 ? -4 - r() * 3 : 55 + r() * 4); z = side === 0 ? -1.2 - r() * 4 : side === 1 ? 24.2 + r() * 4 : -4 + r() * 32; }
+      if (near) { const side = Math.floor(r() * 4); x = side < 2 ? r() * 62 : (side === 2 ? -1 - r() * 3 : 58 + r() * 4); z = side === 0 ? -1.2 - r() * 4 : side === 1 ? 24.2 + r() * 4 : -4 + r() * 32; }
       else { x = -70 + r() * 210; z = -110 + r() * 220; }
-      if (x > -1.5 && x < 54.5 && z > -1 && z < 24) continue;
+      if (x > LOT.x0 - 1.5 && x < LOT.x1 + 1.5 && z > -1 && z < 24) continue;
+      if (x > LOT.lx - 1.5 && x < LOT.x1 + 1.5 && z > LOT.lz - 1.5 && z < 0) continue;
       if (x > -16 && x < -6 && z > -40 && z < 60) continue;
       const s = 0.3 + r() * (near ? 0.45 : 0.8);
       q.setFromAxisAngle(V(0, 1, 0), r() * 6.28);
